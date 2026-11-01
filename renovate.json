@@ -4,6 +4,7 @@
     "config:recommended"
   ],
   "timezone": "Europe/Berlin",
+  "baseBranchPatterns": ["$default"],
   "schedule": [
     "before 6am on monday"
   ],
