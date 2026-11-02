@@ -6,7 +6,7 @@ data pin. See protocol.h for where the knowledge about the module comes from.
 
 from esphome import automation, pins
 import esphome.codegen as cg
-from esphome.components import select, sensor
+from esphome.components import number, select, sensor
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_CODE,
@@ -19,7 +19,7 @@ from esphome.const import (
 )
 
 CODEOWNERS = ["@seb5594"]
-AUTO_LOAD = ["sensor", "select"]
+AUTO_LOAD = ["sensor", "select", "number"]
 
 CONF_BL3361_ID = "bl3361_id"
 CONF_DATA_PIN = "data_pin"
@@ -33,6 +33,7 @@ CONF_GAP = "gap"
 CONF_SETTLE_TIME = "settle_time"
 CONF_SWEEP_MARGIN = "sweep_margin"
 CONF_FREQUENCY_SELECT = "frequency_select"
+CONF_FREQUENCY_NUMBER = "frequency_number"
 CONF_RESTORE_VALUE = "restore_value"
 CONF_ON_LEARN = "on_learn"
 CONF_APPLY = "apply"
@@ -43,6 +44,9 @@ SUPPORTED_BANDS_KHZ = ((305000, 339999), (430000, 439999))
 bl3361_ns = cg.esphome_ns.namespace("bl3361")
 BL3361Component = bl3361_ns.class_("BL3361Component", cg.Component)
 
+FrequencyNumber = bl3361_ns.class_(
+    "FrequencyNumber", number.Number, cg.Parented.template(BL3361Component)
+)
 FrequencySelect = bl3361_ns.class_(
     "FrequencySelect", select.Select, cg.Parented.template(BL3361Component)
 )
@@ -146,6 +150,13 @@ CONFIG_SCHEMA = cv.All(
                     cv.Optional(CONF_RESTORE_VALUE, default=True): cv.boolean,
                 }
             ),
+            # Any frequency in MHz, for one that is not in the list.
+            cv.Optional(CONF_FREQUENCY_NUMBER): number.number_schema(
+                FrequencyNumber,
+                entity_category="config",
+                icon="mdi:sine-wave",
+                unit_of_measurement="MHz",
+            ).extend({cv.Optional(CONF_RESTORE_VALUE, default=True): cv.boolean}),
             # The trigger belongs to the component, so there is exactly one
             # list of actions.
             cv.Optional(CONF_ON_RECEIVE): automation.validate_automation(single=True),
@@ -188,6 +199,15 @@ async def to_code(config):
         rssi = await sensor.new_sensor(config[CONF_RSSI])
         cg.add(var.set_rssi_sensor(rssi))
         cg.add(var.set_rssi_interval(config[CONF_RSSI][CONF_UPDATE_INTERVAL]))
+
+    if CONF_FREQUENCY_NUMBER in config:
+        conf = config[CONF_FREQUENCY_NUMBER]
+        # The band between 340 and 430 MHz is refused when it is entered.
+        num = await number.new_number(
+            conf, min_value=305.0, max_value=440.0, step=0.01
+        )
+        await cg.register_parented(num, config[CONF_ID])
+        cg.add(var.set_frequency_number(num, conf[CONF_RESTORE_VALUE]))
 
     if CONF_ON_LEARN in config:
         await automation.build_automation(

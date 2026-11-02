@@ -9,6 +9,7 @@
 #include "esphome/core/hal.h"
 #include "esphome/core/log.h"
 
+#include "frequency_number.h"
 #include "frequency_select.h"
 
 namespace esphome::bl3361 {
@@ -20,7 +21,7 @@ static const char *const TAG = "bl3361";
 // ---------------------------------------------------------------------------
 
 void BL3361Component::setup() {
-  if (this->frequency_select_ != nullptr && this->restore_frequency_) {
+  if (this->has_frequency_entity_() && this->restore_frequency_) {
     this->frequency_pref_ = global_preferences->make_preference<uint32_t>(fnv1_hash("bl3361_frequency"));
     uint32_t saved_khz = 0;
     FrequencyPlan probe{};
@@ -41,8 +42,7 @@ void BL3361Component::setup() {
   // Park the pin as an input. The edge interrupt is only attached once the
   // module is switched to receive.
   this->data_pin_->pin_mode(gpio::FLAG_INPUT);
-  if (this->frequency_select_ != nullptr)
-    this->frequency_select_->show(this->plan_.frequency_khz());
+  this->show_frequency_();
 }
 
 void BL3361Component::dump_config() {
@@ -56,8 +56,10 @@ void BL3361Component::dump_config() {
                 this->mode_ == Mode::RX ? "receiving" : (this->mode_ == Mode::TX ? "transmitting" : "not started"),
                 this->settle_ms_);
   LOG_PIN("  Data pin: ", this->data_pin_);
-  if (this->frequency_select_ != nullptr)
-    ESP_LOGCONFIG(TAG, "  Frequency entity: yes, last frequency %s", YESNO(this->restore_frequency_));
+  if (this->has_frequency_entity_())
+    ESP_LOGCONFIG(TAG, "  Frequency entities: select %s, number %s, last frequency kept %s",
+                  YESNO(this->frequency_select_ != nullptr), YESNO(this->frequency_number_ != nullptr),
+                  YESNO(this->restore_frequency_));
 #ifdef USE_SENSOR
   LOG_SENSOR("  ", "RSSI", this->rssi_sensor_);
 #endif
@@ -147,12 +149,18 @@ bool BL3361Component::set_frequency(uint32_t frequency_khz) {
 }
 
 void BL3361Component::frequency_changed_(bool persist) {
-  if (persist && this->frequency_select_ != nullptr && this->restore_frequency_) {
+  if (persist && this->has_frequency_entity_() && this->restore_frequency_) {
     uint32_t khz = this->plan_.frequency_khz();
     this->frequency_pref_.save(&khz);
   }
+  this->show_frequency_();
+}
+
+void BL3361Component::show_frequency_() {
   if (this->frequency_select_ != nullptr)
     this->frequency_select_->show(this->plan_.frequency_khz());
+  if (this->frequency_number_ != nullptr)
+    this->frequency_number_->show(this->plan_.frequency_khz());
 }
 
 bool BL3361Component::send_raw(const std::vector<int32_t> &code, uint32_t repeat, uint32_t gap_us,
@@ -361,7 +369,8 @@ void BL3361Component::begin_capture_(uint32_t now) {
 }
 
 void BL3361Component::handle_learn_frame_(const std::vector<int32_t> &frame) {
-  if (!this->collector_.push(frame))
+  // A held key repeats its code within one frame, so look at the pieces.
+  if (!this->collector_.push_burst(frame))
     return;
   this->task_ = Task::NONE;
   ESP_LOGI(TAG, "Learned a code of %u pulses on %.3f MHz, seen %u times", (unsigned) this->collector_.code().size(),

@@ -172,7 +172,8 @@ static void test_frame_matching() {
 }
 
 static void test_collector() {
-  FrameCollector collector;
+  // The test frames are short, so the minimum length is lowered for them.
+  FrameCollector collector(2, 12, 4);
   const auto noise1 = frame({+150, -7626, +119, -7638, +100, -4382}, -21558);
   const auto noise2 = frame({+325, -12526, +125, -2126, +312, -14221}, -19684);
   const auto signal = frame({+263, -325, +262, -319, +275, -312, +269, -331}, -12958);
@@ -188,7 +189,7 @@ static void test_collector() {
   CHECK(frames_match(collector.code(), signal));
 
   // Noise alone never completes a session, however much of it there is.
-  FrameCollector only_noise;
+  FrameCollector only_noise(2, 12, 4);
   uint32_t seed = 7;
   for (int i = 0; i < 40; i++) {
     std::vector<int32_t> f;
@@ -202,11 +203,88 @@ static void test_collector() {
   }
 
   // A signal that has to be seen three times.
-  FrameCollector strict(3);
+  FrameCollector strict(3, 12, 4);
   CHECK(!strict.push(signal));
   CHECK(!strict.push(repeat));
   CHECK(strict.push(signal));
   CHECK(strict.repeats() == 3);
+}
+
+// A frame from a real RM4 Pro log: a remote held down repeats its code with a
+// pause of about 10 ms, which is shorter than the 15 ms that end a frame, so one
+// received frame holds the code over and over.
+static std::vector<int32_t> real_code(int32_t gap, int jitter) {
+  std::vector<int32_t> code = {+294, -294, +294, -300, +581, -594, +287, -296, +298, -294, +607, -608, +548, -300,
+                               +287, -294, +294, -593, +582, -300, +288, -598, +298, -297, +581, -299, +289, -306,
+                               +294, -577, +292, -294, +587, -300, +288, -300, +288, -594, +287, -306, +582, -587,
+                               +294, -300, +581, -294, +294, -594, +287, -300, +588, -293, +288, -300, +300, -582,
+                               +293, -294, +300, -294, +294, -293, +588, -300, +281, -594, +294, -294, +293};
+  for (size_t i = 0; i < code.size(); i++)
+    code[i] += (i % 2 ? -1 : 1) * jitter;
+  code.push_back(gap);
+  return code;
+}
+
+static void test_collector_ignores_tiny_signals() {
+  // Two noise frames that share one short pulse are not a learned code.
+  FrameCollector collector;
+  CHECK(!collector.push(frame({+300, -500, +300, -500}, -9000)));
+  CHECK(!collector.push(frame({+300, -500, +300, -500}, -9000)));
+  CHECK(collector.code().empty());
+}
+
+static void test_split_burst() {
+  // Three repetitions glued together, as the receiver delivers them.
+  std::vector<int32_t> burst;
+  for (const auto &piece : {real_code(-9827, 0), real_code(-10093, 6), real_code(-10045, -5)})
+    burst.insert(burst.end(), piece.begin(), piece.end());
+  const auto pieces = split_burst(burst);
+  CHECK(pieces.size() == 3);
+  for (const auto &piece : pieces)
+    CHECK(piece.back() <= -9000);
+
+  // A trailing repetition that never got its pause is not a complete signal.
+  auto cut = burst;
+  cut.insert(cut.end(), {+287, -300, +294});
+  CHECK(split_burst(cut).size() == 3);
+
+  // No long pause: one piece at most, none if the frame ends on a mark.
+  CHECK(split_burst(std::vector<int32_t>{+300, -300, +300}).empty());
+  // A pause of exactly the limit counts, one microsecond less does not.
+  CHECK(split_burst(std::vector<int32_t>{+300, -4000}).size() == 1);
+  CHECK(split_burst(std::vector<int32_t>{+300, -3999}).empty());
+}
+
+static void test_collector_learns_from_a_burst() {
+  // The whole first press arrives as one frame of repeated codes.
+  std::vector<int32_t> burst;
+  for (const auto &piece : {real_code(-9827, 0), real_code(-10093, 6), real_code(-10045, -5)})
+    burst.insert(burst.end(), piece.begin(), piece.end());
+
+  FrameCollector collector;
+  CHECK(collector.push_burst(burst));
+  CHECK(collector.repeats() >= 2);
+  CHECK(collector.code().size() == real_code(-9827, 0).size());
+  CHECK(frames_match(collector.code(), real_code(-9900, 0)));
+
+  // The same burst cut at an arbitrary place (the framer caps frames at 512
+  // pulses) still yields the code from the complete repetitions inside.
+  std::vector<int32_t> chopped(burst.begin() + 30, burst.end());
+  FrameCollector second;
+  CHECK(second.push_burst(chopped));
+
+  // Noise frames, each with several long pauses, do not learn anything.
+  FrameCollector noise;
+  uint32_t seed = 11;
+  for (int n = 0; n < 20; n++) {
+    std::vector<int32_t> frame;
+    for (int p = 0; p < 60; p++) {
+      seed = seed * 1103515245u + 12345u;
+      const int32_t length = 100 + static_cast<int32_t>((seed >> 16) % 8000);
+      frame.push_back(p % 2 ? -length : length);
+    }
+    CHECK(!noise.push_burst(frame));
+  }
 }
 
 static void test_settle_gate() {
@@ -261,6 +339,9 @@ int main() {
   test_sweep_does_not_block_the_loop();
   test_frame_matching();
   test_collector();
+  test_collector_ignores_tiny_signals();
+  test_split_burst();
+  test_collector_learns_from_a_burst();
   test_settle_gate();
   if (failures != 0) {
     std::printf("%d check(s) failed\n", failures);

@@ -47,6 +47,7 @@
 namespace esphome::bl3361 {
 
 class FrequencySelect;
+class FrequencyNumber;
 
 class BL3361Component : public Component {
  public:
@@ -74,6 +75,12 @@ class BL3361Component : public Component {
   void set_frequency_select(FrequencySelect *select, bool restore) {
     this->frequency_select_ = select;
     this->restore_frequency_ = restore;
+  }
+  /// Entity that takes any frequency in MHz. Remembers the frequency like the
+  /// select does when `restore` is set.
+  void set_frequency_number(FrequencyNumber *number, bool restore) {
+    this->frequency_number_ = number;
+    this->restore_frequency_ = this->restore_frequency_ || restore;
   }
 #ifdef USE_SENSOR
   void set_rssi_sensor(sensor::Sensor *sensor) { this->rssi_sensor_ = sensor; }
@@ -147,6 +154,8 @@ class BL3361Component : public Component {
   // ----- Frequency -----
   /// Remembers the frequency and tells the entity. `persist` also stores it.
   void frequency_changed_(bool persist);
+  void show_frequency_();
+  bool has_frequency_entity_() const { return this->frequency_select_ != nullptr || this->frequency_number_ != nullptr; }
 
   // ----- Search and learning -----
   void run_sweep_(uint32_t now);
@@ -187,6 +196,7 @@ class BL3361Component : public Component {
   uint32_t last_sweep_log_passes_{0};
 
   FrequencySelect *frequency_select_{nullptr};
+  FrequencyNumber *frequency_number_{nullptr};
   bool restore_frequency_{false};
   ESPPreferenceObject frequency_pref_;
 
