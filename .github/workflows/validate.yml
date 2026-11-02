@@ -59,14 +59,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
+        id: python
         with:
           python-version: "3.13"
+      # The Python environment inside ~/.platformio points at the interpreter that
+      # created it, so a cache must never outlive the runner's Python release.
       - name: Cache PlatformIO
         uses: actions/cache@v6
         with:
           path: ~/.platformio
-          key: platformio-${{ matrix.esphome }}-${{ hashFiles('esphome-broadlink-rm4-remote-firmware/platform/**', 'esphome-broadlink-rm4-remote-firmware/common/**', 'esphome-broadlink-rm4-remote-firmware/devices/**/*.yaml') }}
-          restore-keys: platformio-${{ matrix.esphome }}-
+          key: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-${{ hashFiles('esphome-broadlink-rm4-remote-firmware/platform/**', 'esphome-broadlink-rm4-remote-firmware/common/**', 'esphome-broadlink-rm4-remote-firmware/devices/**/*.yaml') }}
+          restore-keys: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-
       - name: Install ESPHome ${{ matrix.esphome }}
         run: |
           if [ "${{ matrix.esphome }}" = "latest" ]; then
