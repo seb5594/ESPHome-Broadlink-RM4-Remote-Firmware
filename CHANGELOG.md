@@ -4,12 +4,12 @@
 
 ### Added
 
-- Optional package `platform/rtl8720c/mac-address.yaml` and the external
-  component `rtl87xx_mac` to set the Wi-Fi MAC address. Some BL3357 modules have
-  no MAC address in the chip, so the Wi-Fi driver gives every one of them
-  `00:e0:4c:b7:23:00`, and an RM4 Pro and an RM4C Mini on the same network end
-  up sharing MAC and IP address. The address is only held in RAM; nothing is
-  written to the chip. Not confirmed on a device yet.
+- Documentation for devices that share the MAC address `00:e0:4c:b7:23:00`:
+  some BL3357 modules have no MAC address in the chip, so an RM4 Pro and an RM4C
+  Mini on the same network end up sharing MAC and IP address. LibreTiny can now
+  be given the real address with `-DLT_WIFI_STA_MAC=...`, see
+  [the guide](docs/configuration.md#same-mac-address-on-several-devices). Needs
+  a LibreTiny branch that is not released yet; not confirmed on a device yet.
 
 ## 1.1.0 - 2026-10-23
 

@@ -44,7 +44,7 @@ jobs:
       matrix:
         # Oldest supported release and whatever is current.
         esphome: ["2026.9.0", "latest"]
-        config: [ci-rm4-mini, ci-rm4-pro, ci-rm4-pro-rf, ci-rm4-mini-mac]
+        config: [ci-rm4-mini, ci-rm4-pro, ci-rm4-pro-rf]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
