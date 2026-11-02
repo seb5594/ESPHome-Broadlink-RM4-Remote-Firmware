@@ -1,6 +1,6 @@
-# Status LED and physical button.
+# Feature: status LED and physical button.
 #
-# Needs these substitutions from the device file:
+# The device file hands over the pins as substitutions:
 #   pin_status_led   LED pin, lit when the pin is low
 #   pin_button       button pin, pressed when the pin is low
 

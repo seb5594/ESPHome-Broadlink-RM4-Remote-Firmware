@@ -1,8 +1,15 @@
-# 433 MHz radio of the Broadlink RM4 Pro. EXPERIMENTAL: the module answers and
-# received frames are confirmed on a device, sending is not.
+# Feature: the 433 MHz radio of a Broadlink with the BL3361 module (RM4 Pro).
+# EXPERIMENTAL: the module answers, frames are received, learning works; sending
+# is not confirmed on a device.
 #
-# pro.yaml includes this file, so there is nothing to add to your own config. It
-# needs ESPHome 2026.10 or newer (the native radio_frequency entity below).
+# The device file includes this file, so there is nothing to add to your own
+# config. It needs ESPHome 2026.10 or newer (the native radio_frequency entity
+# below). A device file that offers the radio as an option leaves it out with
+# `rf_driver: none`, see rf/none.yaml.
+#
+# The device file hands over the pin as a substitution:
+#   pin_rf_data   raw data pin of the radio (PA20 on the RM4 Pro)
+#   name          device name, part of the event names
 #
 # The radio is the separate BL3361 module. The component `bl3361` of this
 # repository handles both connections to it:
@@ -27,12 +34,17 @@
 #     of the radio, kept over restarts.
 #   - RF Transmitter: the native radio_frequency entity, with which integrations
 #     of Home Assistant send through the radio.
-#   - Received 433 MHz codes as the event `esphome.<name>_rf_received`, with the
-#     raw pulse timings in `code` and the frequency in `frequency_mhz`.
+#   - Received 433 MHz codes as the event `esphome.<name>_rf_received`, one per
+#     transmission, with the raw pulse timings in `code` and the frequency in
+#     `frequency_mhz`.
 #   - Learning like the Broadlink app: the actions `rf_learn`, `rf_find_frequency`
 #     and `rf_cancel`, with the progress as the event `esphome.<name>_rf_learn`.
 #   - The actions `rf_send_raw`, `rf_send_raw_at`, `rf_set_frequency` and
 #     `rf_scan`, and a relative signal strength sensor.
+
+esphome:
+  # The native radio_frequency entity below exists since ESPHome 2026.10.
+  min_version: 2026.10.0
 
 substitutions:
   # Where the external component is loaded from. Keep both in step with the
@@ -47,9 +59,6 @@ substitutions:
   # Carrier frequency. 433.92 MHz is the usual one in Europe. The module tunes
   # to 305-340 MHz and 430-440 MHz.
   rf_frequency: 433.92MHz
-
-  # Raw data pin of the radio, taken from the profile of the stock firmware.
-  pin_rf_data: PA20
 
 external_components:
   - source:
@@ -82,6 +91,9 @@ bl3361:
   rssi:
     name: RF Signal Strength
     entity_category: diagnostic
+  # One event per transmission of a remote. A key that is held repeats its code;
+  # the same code again within `repeat_timeout` (500ms unless set here) is a
+  # repeat and gives no event. `repeat_timeout: 0ms` reports every transmission.
   on_receive:
     - homeassistant.event:
         event: esphome.${name}_rf_received

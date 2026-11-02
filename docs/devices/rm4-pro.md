@@ -61,11 +61,11 @@ Which gives:
 
 | Function | Pin | Profile field | Used here |
 |---|---|---|---|
-| IR transmitter (carrier) | `PA4` | irda carrier_pin 4 | yes, `pro-ir.yaml` |
+| IR transmitter (carrier) | `PA4` | irda carrier_pin 4 | yes, feature `ir` |
 | IR receiver (data) | `PA18` | irda data_pin 18 | yes |
 | Status LED | `PA7` | irda led_pin 7 | yes, inverted (on = low) |
 | Button | `PA19` | rmparam app_keypad_pin 19 | yes, inverted, pull-up |
-| RF data | `PA20` | rf data_pin 20 | yes, `rf.yaml` |
+| RF data | `PA20` | rf data_pin 20 | yes, feature `rf` |
 | Network pin | `PA15` | rmparam app_network_pin 15 | no, also the RX line of the flashing UART |
 | UART to the radio module | `PA14` / `PA13` | `uart_drv_open` of the stock driver, port 0 | yes, in the `bl3361` component, see [RF module protocol](../rf-protocol.md#how-the-radio-is-wired) |
 | Boot mode | `PA0` | | pull high at power-up for download mode |
@@ -98,7 +98,8 @@ See the [433 MHz guide](../433mhz.md) for the setup and for how to test it
 without owning a 433 MHz device, and [RF module protocol](../rf-protocol.md)
 for how the radio module works and what is still open.
 
-In short: [`rf.yaml`](../../esphome-broadlink-rm4-remote-firmware/devices/rm4/rf.yaml),
+In short: the radio feature
+[`bl3361.yaml`](../../esphome-broadlink-rm4-remote-firmware/features/rf/bl3361.yaml),
 which `pro.yaml` includes, talks to the radio over UART0, switches it between
 receive and transmit and passes the raw signal through `PA20`. A received code
 arrives as a Home Assistant event with its pulse timings; `rf_send_raw` sends

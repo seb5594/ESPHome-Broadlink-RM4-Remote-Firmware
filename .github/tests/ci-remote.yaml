@@ -5,9 +5,12 @@
 substitutions:
   name: ci-remote-__DEVICE__
   friendly_name: CI Remote __DEVICE__
-  # Read by rf.yaml, which loads its component from the commit under test.
+  # Read by the radio feature, which loads its component from the commit under test.
   firmware_url: __REPO__
   firmware_ref: __REF__
+  # The workflow puts `rf_driver: none` here for the check of the RM4 Pro without
+  # the radio, and leaves the line empty otherwise.
+  # __RF_LINE__
 
 packages:
   remote:

@@ -7,13 +7,15 @@
 # The RM4 Pro has infrared and a 433 MHz radio, and pro.yaml brings both: there
 # is no second file to add. The radio is EXPERIMENTAL, see docs/433mhz.md. It
 # needs ESPHome 2026.10 or newer. For an infrared-only device, or an older
-# ESPHome, use pro-ir.yaml in place of pro.yaml.
+# ESPHome, uncomment `rf_driver: none` below.
 
 substitutions:
   name: broadlink-rm4-pro
   friendly_name: Broadlink RM4 Pro
   # Raise to 80ms if long air conditioner codes arrive split up.
   # ir_receiver_idle: 25ms
+  # The RM4 Pro without the radio: infrared only, and no ESPHome 2026.10 needed.
+  # rf_driver: none
   # Only if the router shows 00:e0:4c:b7:23:00 for the device: its real MAC
   # address from the label or the Broadlink app, twelve hex digits.
   # mac_address: "aabbccddeeff"

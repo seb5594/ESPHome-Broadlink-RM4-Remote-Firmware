@@ -38,7 +38,7 @@ and are not covered.
 
 What each configuration gives you:
 
-| Feature | RM4 Mini / RM4C Mini | RM4 Pro (`pro.yaml`) | RM4 Pro, infrared only (`pro-ir.yaml`) |
+| Feature | RM4 Mini / RM4C Mini | RM4 Pro (`pro.yaml`) | RM4 Pro, infrared only (`rf_driver: none`) |
 |---|---|---|---|
 | Infrared emitter (`infrared` entity) | ✅ | ✅ | ✅ |
 | Infrared receiver (`infrared` entity) | ✅ | ✅ | ✅ |
@@ -239,7 +239,7 @@ tunes it over a UART and exchanges the raw signal with it through one data pin.
 The external component [`bl3361`](esphome-broadlink-rm4-remote-firmware/components/bl3361)
 implements that, and [`pro.yaml`](esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml)
 brings it along with the infrared part, so there is nothing extra to include
-(ESPHome 2026.10 or newer; `pro-ir.yaml` is the infrared-only variant). In Home
+(ESPHome 2026.10 or newer; `rf_driver: none` in your config leaves the radio out). In Home
 Assistant you get:
 
 - **RF Frequency** and **RF Custom Frequency**: the frequency of the radio as a
@@ -268,15 +268,20 @@ verified against the stock firmware, see [RM4 Pro](docs/devices/rm4-pro.md#pin-m
 
 ## How it is built
 
-The firmware is assembled from small ESPHome packages. A device file only holds
-the pin map and the identity of the hardware, the rest is shared:
+The firmware is assembled from small ESPHome packages. There is one file per
+model, which holds the identity and the pin map and puts the model together from
+the shared parts. The features do the work and get their pins as substitutions:
 
 ```text
 rm4-mini.example.yaml        your config: name, Wi-Fi, keys. Pulls the rest from GitHub
 rm4-pro.example.yaml
 esphome-broadlink-rm4-remote-firmware/
-  devices/rm4/               mini.yaml, pro.yaml (infrared + radio), pro-ir.yaml, rf.yaml
-  common/                    base (API, OTA, hotspot), controls (LED, button), IR proxy
+  devices/rm4/               one file per model: mini.yaml, pro.yaml
+  features/
+    ir/                      infrared emitter and receiver (pin_ir_tx, pin_ir_rx)
+    rf/                      433 MHz radio of the BL3361 module (pin_rf_data), or none
+    controls/                status LED and button (pin_status_led, pin_button)
+  common/                    base: API, OTA, hotspot, captive portal
   platform/rtl8720c/         chip specifics: board, logger, the IR receiver fix
   components/bl3361/         external component for the 433 MHz radio
 docs/                        guides: configuration, Home Assistant, 433 MHz, devices
@@ -286,9 +291,10 @@ docs/                        guides: configuration, Home Assistant, 433 MHz, dev
 | Layer | Purpose |
 |---|---|
 | Your device | Name, Wi-Fi, API key, hotspot password. |
-| Device | Pin map, name and project info. |
-| IR proxy | `remote_receiver`, `remote_transmitter` and the `infrared` entities of `ir_rf_proxy`. |
-| Controls | Status LED and physical button. |
+| Model | Identity, pin map and the list of features. One file per Broadlink model. |
+| Feature `ir` | `remote_receiver`, `remote_transmitter` and the `infrared` entities of `ir_rf_proxy`. |
+| Feature `rf` | The radio: frequency entities, receive, send, learning. |
+| Feature `controls` | Status LED and physical button. |
 | Base | API, OTA, fallback hotspot and captive portal. |
 | Platform | Board, logger and the receiver fix. |
 
@@ -300,18 +306,20 @@ fixes that without touching LibreTiny. And the hardware UART logger is off
 available over Wi-Fi. Everything is explained in
 [ESPHome configuration](docs/configuration.md).
 
-A new RM4 variant needs a new file in `devices/rm4/` and, if it brings hardware
-the shared layers don't cover, a new layer next to them.
+Another Broadlink needs one new file in `devices/` and, if it brings hardware
+the features don't cover, a new feature folder; see
+[Adding a model](docs/adding-a-model.md).
 
 ## Branches and versions
 
-- `main` is the stable state. This is **v1.2.0**, see the [changelog](CHANGELOG.md).
+- `main` is the stable state. This is **v1.3.0**, see the [changelog](CHANGELOG.md).
 - `dev` is where development happens. To try it, set `ref: dev` (and
   `firmware_ref: dev` for the RM4 Pro) in the package of your config.
 - Configs written for **v1.0.0** pull `broadlink-rm4-mini.yaml` from the root of
   this repository, configs of **v1.1.0** use `devices/rm4-mini/rm4-mini.yaml` and
-  `devices/rm4-pro/`. These files still exist and forward to the new places in
-  `devices/rm4/`, so they keep working; new configs should use the example files.
+  `devices/rm4-pro/`, and `devices/rm4/pro-ir.yaml` of **v1.2.0** is the RM4 Pro
+  without the radio. These files still exist and forward to the new places, so
+  they keep working; new configs should use the example files.
 
 Use a commit hash or tag as `ref` to stay on a fixed state.
 
@@ -322,6 +330,7 @@ Use a commit hash or tag as `ref` to stay on a fixed state.
 - [433 MHz guide](docs/433mhz.md): setup, testing, detecting, rules
 - [RF module protocol](docs/rf-protocol.md): how the radio module works
 - Device pages: [RM4 Mini](docs/devices/rm4-mini.md), [RM4 Pro](docs/devices/rm4-pro.md)
+- [Adding a model](docs/adding-a-model.md): how the files fit together, for another Broadlink
 - [Using the radio in Home Assistant](docs/rf-home-assistant.md): frequency, learning, sending, a dashboard card
 - [Troubleshooting](docs/troubleshooting.md)
 - [Changelog](CHANGELOG.md)

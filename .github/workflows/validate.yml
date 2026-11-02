@@ -68,7 +68,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.platformio
-          key: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-${{ hashFiles('esphome-broadlink-rm4-remote-firmware/platform/**', 'esphome-broadlink-rm4-remote-firmware/common/**', 'esphome-broadlink-rm4-remote-firmware/devices/**/*.yaml') }}
+          key: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-${{ hashFiles('esphome-broadlink-rm4-remote-firmware/platform/**', 'esphome-broadlink-rm4-remote-firmware/common/**', 'esphome-broadlink-rm4-remote-firmware/features/**', 'esphome-broadlink-rm4-remote-firmware/devices/**/*.yaml') }}
           restore-keys: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-
       - name: Install ESPHome ${{ matrix.esphome }}
         run: |
@@ -105,6 +105,12 @@ jobs:
           - device: rm4-pro
             files: esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml
             compile: true
+          # The radio left out by a substitution: infrared only.
+          - device: rm4-pro-rf-none
+            files: esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml
+            compile: false
+            rf: none
+          # Configs written for release 1.2.0 use this file for the same.
           - device: rm4-pro-ir
             files: esphome-broadlink-rm4-remote-firmware/devices/rm4/pro-ir.yaml
             compile: false
@@ -135,6 +141,7 @@ jobs:
               -e "s|__REF__|$FIRMWARE_REF|g" \
               -e "s|__DEVICE__|${{ matrix.device }}|g" \
               -e "s|__FILES__|${{ matrix.files }}|g" \
+              -e "s|# __RF_LINE__|${{ matrix.rf && format('rf_driver: {0}', matrix.rf) || '' }}|g" \
               .github/tests/ci-remote.yaml > .github/tests/ci-remote-rendered.yaml
       - name: Validate config
         run: bash .github/tests/run_logged.sh esphome config .github/tests/ci-remote-rendered.yaml

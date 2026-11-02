@@ -3,17 +3,19 @@
 # Hardware:  board RM4_MINI-MAIN-V4.0.1, Wi-Fi module BL3357-P (Realtek RTL8720CF)
 # Project:   https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware
 #
-# This file is the entry point of the device. It holds the pin map and the
-# identity, the actual behaviour comes from the shared layers it pulls in.
-# Your own device config includes this file as a package and only adds Wi-Fi
-# credentials and keys, see rm4-mini.example.yaml in the repository root.
-# Every substitution below can be overridden there.
+# One file per model: it holds the identity and the pin map and puts the model
+# together from the platform and the features of this repository. The features
+# do the actual work, see ../../features. Your own device config includes this
+# file as a package and only adds Wi-Fi credentials and keys, see
+# rm4-mini.example.yaml in the repository root. Every substitution below can be
+# overridden there.
 
 substitutions:
   name: broadlink-rm4-mini
   friendly_name: Broadlink RM4 Mini
 
-  # Pin map, taken from the boot log of the stock firmware.
+  # Pin map, taken from the boot log of the stock firmware. The features get
+  # their pins from these substitutions.
   pin_ir_tx: PA4
   pin_ir_rx: PA18
   pin_status_led: PA7
@@ -22,8 +24,8 @@ substitutions:
 packages:
   rtl8720c: !include ../../platform/rtl8720c/rtl8720c.yaml
   base: !include ../../common/base.yaml
-  controls: !include ../../common/controls.yaml
-  ir_proxy: !include ../../common/ir-proxy.yaml
+  controls: !include ../../features/controls/controls.yaml
+  ir: !include ../../features/ir/ir.yaml
 
 esphome:
   name: ${name}

@@ -1,8 +1,11 @@
-# Infrared emitter and receiver as a native Home Assistant IR proxy.
+# Feature: infrared emitter and receiver as a native Home Assistant IR proxy.
 #
-# Needs these substitutions from the device file:
+# The device file hands over the pins as substitutions:
 #   pin_ir_tx   pin that drives the IR LEDs
 #   pin_ir_rx   data pin of the IR receiver
+#
+# Nothing in here depends on the model, so every Broadlink with an infrared
+# emitter and receiver uses this file as it is.
 
 substitutions:
   # Silence that ends a received code. 25 ms suits TV and audio remotes;

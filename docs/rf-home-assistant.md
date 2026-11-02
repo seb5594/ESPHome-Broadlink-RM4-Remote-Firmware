@@ -23,16 +23,16 @@ transmitting see the [433 MHz guide](433mhz.md).
 ## What you need
 
 - An RM4 Pro flashed with this firmware, and ESPHome **2026.10.0** or newer
-  to build it. The device file is `pro.yaml`, which brings the radio along: you
-  do **not** include `rf.yaml` yourself any more. See
+  to build it. The model file is `pro.yaml`, which brings the radio along: you
+  do **not** include a radio file yourself. See
   [`rm4-pro.example.yaml`](../rm4-pro.example.yaml).
 - Home Assistant **2026.6.0** or newer, with the device added under **Settings →
   Devices & services** (ESPHome), as described in [Home Assistant](home-assistant.md).
 - A remote or a device on 433 MHz to try it with, see
   [Testing without owning a 433 MHz device](433mhz.md#testing-without-owning-a-433-mhz-device).
 
-An RM4 Pro that should stay infrared only uses `pro-ir.yaml` instead of
-`pro.yaml` and has none of the following.
+An RM4 Pro that should stay infrared only sets `rf_driver: none` in the
+`substitutions:` of its config and has none of the following.
 
 ## What the device brings
 
@@ -298,9 +298,15 @@ pick this one.
 
 ## Receiving
 
-Every received code is fired as the event `esphome.broadlink-rm4-pro_rf_received`
+Every received transmission is fired as the event `esphome.broadlink-rm4-pro_rf_received`
 with `code` (the timings, comma separated), `pulses` (their number) and
-`frequency_mhz`. All values are text, so compare numbers with `| int`:
+`frequency_mhz`. One event is one transmission of the remote: a key that is held,
+or a remote that repeats its code, gives the same code over and over, and the
+device reports it once. The same code again within `repeat_timeout` (default
+500 ms, counted from the last repeat) is taken as a repeat of the first; a pause
+longer than that, or another key, is a new event. `repeat_timeout: 0ms` in the
+`bl3361:` section reports every single transmission. All values are text, so
+compare numbers with `| int`:
 
 ```yaml
 automation:
@@ -400,4 +406,4 @@ packet and cannot be imported; learn them again.
 - **The choice does not follow `rf_frequency`**: the last choice wins over the
   config after the first start; pick the frequency in Home Assistant.
 - **The ESPHome build says it needs 2026.10**: the radio needs it, or use
-  `pro-ir.yaml`.
+  `rf_driver: none`.

@@ -1,16 +1,16 @@
 # ESPHome configuration
 
-Every device in this repository is built from the same small layers. A device
-file only holds the pin map and the identity of the hardware, everything else
-comes from the layers below it:
+Every device in this repository is built from the same small parts. A model
+file holds the identity and the pin map of one Broadlink and lists the features
+it has, everything else comes from the parts below it:
 
 | Layer | File | Purpose |
 |---|---|---|
-| Your device | [`rm4-mini.example.yaml`](../rm4-mini.example.yaml), [`rm4-pro.example.yaml`](../rm4-pro.example.yaml) | Name, Wi-Fi, API key, hotspot password. Pulls in the device file straight from GitHub. |
-| Device | [`devices/rm4/mini.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/mini.yaml), [`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml), [`pro-ir.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro-ir.yaml) | Pin map, name and project info. Used as a package and never edited by you. `pro.yaml` is `pro-ir.yaml` plus the radio. |
-| 433 MHz radio (RM4 Pro, experimental) | [`devices/rm4/rf.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/rf.yaml) | Part of `pro.yaml`. The [`bl3361` component](../esphome-broadlink-rm4-remote-firmware/components/bl3361), its entities, the native `radio_frequency` entity and the actions. |
-| IR proxy | [`common/ir-proxy.yaml`](../esphome-broadlink-rm4-remote-firmware/common/ir-proxy.yaml) | IR receiver, IR transmitter and the Home Assistant `infrared` entities. |
-| Controls | [`common/controls.yaml`](../esphome-broadlink-rm4-remote-firmware/common/controls.yaml) | Status LED and physical button. |
+| Your device | [`rm4-mini.example.yaml`](../rm4-mini.example.yaml), [`rm4-pro.example.yaml`](../rm4-pro.example.yaml) | Name, Wi-Fi, API key, hotspot password. Pulls in the model file straight from GitHub. |
+| Model | [`devices/rm4/mini.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/mini.yaml), [`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml) | One file per Broadlink model: identity, pin map and the list of features. Used as a package and never edited by you. |
+| Feature `ir` | [`features/ir/ir.yaml`](../esphome-broadlink-rm4-remote-firmware/features/ir/ir.yaml) | IR receiver, IR transmitter and the Home Assistant `infrared` entities. |
+| Feature `rf` (RM4 Pro, experimental) | [`features/rf/bl3361.yaml`](../esphome-broadlink-rm4-remote-firmware/features/rf/bl3361.yaml) | The [`bl3361` component](../esphome-broadlink-rm4-remote-firmware/components/bl3361), its entities, the native `radio_frequency` entity and the actions. `features/rf/none.yaml` is the same feature switched off. |
+| Feature `controls` | [`features/controls/controls.yaml`](../esphome-broadlink-rm4-remote-firmware/features/controls/controls.yaml) | Status LED and physical button. |
 | Base | [`common/base.yaml`](../esphome-broadlink-rm4-remote-firmware/common/base.yaml) | API, OTA, fallback hotspot, captive portal. |
 | Platform | [`platform/rtl8720c/rtl8720c.yaml`](../esphome-broadlink-rm4-remote-firmware/platform/rtl8720c/rtl8720c.yaml) | Chip specifics: board, logger, the [receiver fix](#the-receiver-fix). |
 
@@ -19,10 +19,11 @@ your device with the next build. `refresh: 1d` makes ESPHome check for a new
 version once a day. If you want to stay on a fixed state, replace the `ref`
 with a commit hash or tag.
 
-The layers are plain ESPHome packages, so a new RM4 variant needs only a new
-device file: pick the layers that fit, set the pins.
+The parts are plain ESPHome packages, so another Broadlink needs only a new
+model file: pick the features that fit, set the pins. How that goes is in
+[Adding a model](adding-a-model.md).
 
-## Device file
+## Model file
 
 ```yaml
 substitutions:
@@ -36,8 +37,8 @@ substitutions:
 packages:
   rtl8720c: !include ../../platform/rtl8720c/rtl8720c.yaml
   base: !include ../../common/base.yaml
-  controls: !include ../../common/controls.yaml
-  ir_proxy: !include ../../common/ir-proxy.yaml
+  controls: !include ../../features/controls/controls.yaml
+  ir: !include ../../features/ir/ir.yaml
 
 esphome:
   name: ${name}
@@ -49,9 +50,15 @@ esphome:
 
 `name` becomes the hostname and the base of all entity IDs, `friendly_name` is
 what Home Assistant shows. Your own config can override both. The `pin_*`
-substitutions are the only hardware knowledge the shared layers need.
+substitutions are how a model hands the pins to the features, they are the only
+hardware knowledge the features need, and your config can override them too.
 `project` shows up in the device info in Home Assistant, so you can see which
 version of this config runs on the device.
+
+A feature that is optional is chosen by a substitution that names its file. The
+RM4 Pro does it for the radio: `rf_driver: bl3361` includes
+`features/rf/bl3361.yaml`, `rf_driver: none` includes `features/rf/none.yaml`,
+which is empty.
 
 ## Platform layer
 
@@ -158,7 +165,7 @@ credentials, so a new router never means opening the case again. Give the
 hotspot a password (`fallback_ap_password` in the example), because the portal
 also accepts firmware uploads.
 
-## Controls layer
+## Controls feature
 
 ```yaml
 status_led:
@@ -181,7 +188,7 @@ Wi-Fi, no API connection) and stays off when everything is fine. The physical
 button becomes a binary sensor in Home Assistant and can trigger any
 automation.
 
-## IR proxy layer
+## IR feature
 
 ### `remote_receiver`
 
@@ -249,14 +256,13 @@ firmware, so learning new devices needs no reflash. `receiver_frequency` does
 not change the hardware, it only tells Home Assistant that the receiver
 demodulates 38 kHz signals.
 
-## 433 MHz radio layer (RM4 Pro, experimental)
+## Radio feature (RM4 Pro, experimental)
 
-[`rf.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/rf.yaml) is part of
-[`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml), so the
-radio needs no line in your own config. It needs ESPHome 2026.10 or newer. An
-RM4 Pro that should stay infrared only, or runs an older ESPHome, uses
-[`pro-ir.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro-ir.yaml)
-instead of `pro.yaml`.
+[`features/rf/bl3361.yaml`](../esphome-broadlink-rm4-remote-firmware/features/rf/bl3361.yaml)
+is part of [`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml),
+so the radio needs no line in your own config. It needs ESPHome 2026.10 or
+newer. An RM4 Pro that should stay infrared only, or runs an older ESPHome, puts
+`rf_driver: none` into the `substitutions:` of its config.
 
 What the package puts into the device:
 

@@ -1,5 +1,45 @@
 # Changelog
 
+## 1.3.0 - 2026-11-02
+
+### Changed
+
+- **One event per transmission**: `esphome.<name>_rf_received` used to carry
+  whatever the frame buffer held, so one key press gave a dozen events of up to
+  512 pulses, cut at random places, with long preambles in between. The device
+  now cuts the signal at its pauses and reports each transmission once, without
+  the preamble that was cut off and without the rest at the end that is no
+  complete transmission. The same code again within `repeat_timeout` (default
+  500 ms, restarted by every repeat, so a held key is one event) is taken as a
+  repeat and not reported; `repeat_timeout: 0ms` reports every transmission.
+  The event keeps its data. Learning is not affected.
+- **Modular layout**: one file per Broadlink model in `devices/rm4/`, and the
+  functions as features in their own folders, each with the pins it expects as
+  substitutions:
+  - `features/ir/ir.yaml` (was `common/ir-proxy.yaml`): `pin_ir_tx`, `pin_ir_rx`
+  - `features/controls/controls.yaml` (was `common/controls.yaml`):
+    `pin_status_led`, `pin_button`
+  - `features/rf/bl3361.yaml` (was `devices/rm4/rf.yaml`): `pin_rf_data`
+  - `common/base.yaml` and `platform/rtl8720c/` stay.
+  A model puts its pin map into the substitutions and lists the features. How a
+  new model is added is in [Adding a model](docs/adding-a-model.md).
+- **`pro-ir.yaml` is obsolete.** `pro.yaml` is the only RM4 Pro file now. The
+  radio is a feature it includes by name: `rf_driver: bl3361` (the default), and
+  `rf_driver: none` in your config leaves it out for an infrared-only device,
+  which also needs no ESPHome 2026.10 any more (that requirement moved from
+  `pro.yaml` into the radio feature). `pro-ir.yaml` stays as a shim that sets
+  `rf_driver: none`.
+- The files of the layers moved as listed above. `devices/rm4/rf.yaml` is gone,
+  it was never meant to be included by hand; configs of v1.1.0 that list
+  `devices/rm4-pro/rf.yaml` still work. If you built your own device file from
+  `common/ir-proxy.yaml` or `common/controls.yaml`, point it at the new places.
+
+### Added
+
+- The `repeat_timeout` option of the `bl3361` component.
+- Host tests for the receive filter.
+- CI checks the RM4 Pro with the radio switched off as a remote package.
+
 ## 1.2.5 - 2026-11-02
 
 ### Fixed

@@ -1,7 +1,7 @@
 # Old location of the RM4 Pro device file, kept so that configs written for
 # release 1.1.0 keep working. It stays infrared only, as it was: together with
 # rf.yaml of this folder it is the same as ../rm4/pro.yaml. New configs use
-# ../rm4/pro.yaml (infrared and radio) or ../rm4/pro-ir.yaml (infrared only).
+# ../rm4/pro.yaml, with `rf_driver: none` for an infrared-only device.
 
 packages:
   rm4_pro: !include ../rm4/pro-ir.yaml

@@ -11,6 +11,7 @@
 #include "edge_ring.h"
 #include "frame_match.h"
 #include "frequency_options.h"
+#include "receive_filter.h"
 #include "settle_gate.h"
 #include "sweep.h"
 
@@ -270,6 +271,92 @@ static void test_collector_ignores_tiny_signals() {
   CHECK(collector.code().empty());
 }
 
+// A transmission as the remote sends it: a few short pulses, the code (bits as
+// short or long marks) and the pause behind it.
+static std::vector<int32_t> transmission(int bits, int variant, int32_t gap = -10000) {
+  std::vector<int32_t> out;
+  for (int i = 0; i < 6; i++) {
+    out.push_back(300);
+    out.push_back(-290);
+  }
+  for (int i = 0; i < bits; i++) {
+    const bool one = ((i * 7 + variant) % 3) == 0;
+    out.push_back(one ? 590 : 300);
+    out.push_back(one ? -580 : -290);
+  }
+  out.push_back(gap);
+  return out;
+}
+
+static std::vector<int32_t> join(std::initializer_list<std::vector<int32_t>> parts) {
+  std::vector<int32_t> out;
+  for (const auto &part : parts)
+    out.insert(out.end(), part.begin(), part.end());
+  return out;
+}
+
+static std::vector<int32_t> preamble(size_t pulses) {
+  std::vector<int32_t> out;
+  for (size_t i = 0; i < pulses; i += 2) {
+    out.push_back(300);
+    out.push_back(-290);
+  }
+  return out;
+}
+
+static void test_receive_filter_gives_one_event_per_transmission() {
+  ReceiveFilter filter(512, 24, 0);
+  // A frame that ended in silence: every transmission in it counts.
+  auto out = filter.push(join({transmission(16, 0), transmission(16, 1), transmission(16, 2)}), 1000);
+  CHECK(out.size() == 3);
+  CHECK(out[0] == transmission(16, 0));
+  CHECK(out[2] == transmission(16, 2));
+}
+
+static void test_receive_filter_drops_what_is_not_a_transmission() {
+  ReceiveFilter filter(512, 24, 0);
+  // A frame cut off by the limit that holds nothing but a preamble.
+  CHECK(filter.push(preamble(512), 1000).empty());
+  // The next frame continues it: its first piece starts in the middle of a
+  // signal and is not reported, the ones after it are. The rest behind the last
+  // pause is no complete transmission, and the limit cuts this frame off again.
+  auto out = filter.push(join({preamble(40), std::vector<int32_t>{-12000}, transmission(16, 0), transmission(16, 0),
+                               preamble(512)}),
+                         1250);
+  CHECK(out.size() == 2);
+  CHECK(out[0] == transmission(16, 0));
+  // That frame was cut off as well, so the next one's first piece is dropped.
+  out = filter.push(join({transmission(16, 5), transmission(16, 0)}), 1500);
+  CHECK(out.size() == 1);
+  CHECK(out[0] == transmission(16, 0));
+  // And one that ended in silence does not continue anything.
+  out = filter.push(transmission(16, 0), 1750);
+  CHECK(out.size() == 1);
+}
+
+static void test_receive_filter_swallows_repeats() {
+  ReceiveFilter filter(512, 24, 500);
+  CHECK(filter.push(join({transmission(16, 0), transmission(16, 0), transmission(16, 0)}), 1000).size() == 1);
+  // The window stays open while the key is held.
+  CHECK(filter.push(transmission(16, 0), 1400).empty());
+  CHECK(filter.push(transmission(16, 0), 1800).empty());
+  CHECK(filter.push(transmission(16, 0), 2200).empty());
+  // Another key is another event at once.
+  CHECK(filter.push(transmission(16, 1), 2300).size() == 1);
+  // The same key again after a pause is a new press.
+  CHECK(filter.push(transmission(16, 1), 3000).size() == 1);
+  // 0 ms switches the filter off.
+  ReceiveFilter all(512, 24, 0);
+  CHECK(all.push(join({transmission(16, 0), transmission(16, 0)}), 1000).size() == 2);
+}
+
+static void test_receive_filter_ignores_tiny_pieces() {
+  ReceiveFilter filter(512, 24, 0);
+  // Two short bursts of noise with a pause behind each.
+  const std::vector<int32_t> noise = {300, -290, 590, -9000, 300, -290, 300, -9000};
+  CHECK(filter.push(join({noise, transmission(16, 0)}), 1000).size() == 1);
+}
+
 static void test_split_burst() {
   // Three repetitions glued together, as the receiver delivers them.
   std::vector<int32_t> burst;
@@ -380,6 +467,10 @@ int main() {
   test_collector();
   test_collector_ignores_tiny_signals();
   test_split_burst();
+  test_receive_filter_gives_one_event_per_transmission();
+  test_receive_filter_drops_what_is_not_a_transmission();
+  test_receive_filter_swallows_repeats();
+  test_receive_filter_ignores_tiny_pieces();
   test_collector_learns_from_a_burst();
   test_settle_gate();
   if (failures != 0) {

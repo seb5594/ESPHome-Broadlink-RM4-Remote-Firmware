@@ -1,15 +1,77 @@
-# Broadlink RM4 Pro: infrared and the EXPERIMENTAL 433 MHz radio.
+# Broadlink RM4 Pro: infrared and the EXPERIMENTAL 433 MHz radio
 #
-# This is the entry point of the device. It combines
-#   pro-ir.yaml   the pin map and the infrared proxy
-#   rf.yaml       the radio: frequency entities, learning, sending
-# so there is nothing else to include. For an infrared-only RM4 Pro use
-# pro-ir.yaml instead. See rm4-pro.example.yaml in the repository root.
+# Hardware:  board RM4_PRO V2.1.6, Wi-Fi module BL3357-P (Realtek RTL8720CF),
+#            separate 433 MHz RF module BL3361-1
+# Project:   https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware
+#
+# One file per model: it holds the identity and the pin map and puts the model
+# together from the platform and the features of this repository. The features
+# do the actual work, see ../../features. Your own device config includes this
+# file as a package and only adds Wi-Fi credentials and keys, see
+# rm4-pro.example.yaml in the repository root. Every substitution below can be
+# overridden there.
+#
+# The radio is optional. For an RM4 Pro that should stay infrared only, or runs
+# an ESPHome older than 2026.10, set `rf_driver: none` in your config.
+#
+# Pin map. It was first published by phdindota
+# (https://github.com/phdindota/broadlink-rm4pro-esphome) and is confirmed here
+# against a flash dump of a stock RM4 Pro, which holds the hardware profile of
+# the device as a text in the flash, at file offset 0x1C0152 of a 2 MiB dump:
+#
+#   "rmbase":[[1,0,4,18,8,1,4,7],[9,0,90,20],15,19,1,[0],[0],0,0,0]
+#
+# The firmware parses this list in a fixed order and prints the fields in its
+# boot log ("irda in profile", "rf in profile", "rmparam in profile"):
+#
+#   [1,0,4,18,8,1,4,7]   irda: is_support, capin_work_level, carrier_pin = 4,
+#                        data_pin = 18, data_gpt, carrier_gpt,
+#                        carrier_gpt_channel, led_pin = 7
+#   [9,0,90,20]          rf:   is_support, freq_range_start, freq_range_end,
+#                        data_pin = 20
+#   15, 19, ...          rmparam: app_network_pin = 15, app_keypad_pin = 19
+#
+#   IR transmitter   carrier_pin 4   PA4    (same as the RM4 Mini)
+#   IR receiver      data_pin 18     PA18   (same as the RM4 Mini)
+#   Status LED       led_pin 7       PA7
+#   Button           keypad 19       PA19
+#   RF data          rf data_pin 20  PA20
+#   Network pin      rmparam 15      PA15   (the stock firmware calls it
+#                                            app_network_pin; it is also the RX
+#                                            line of the flashing UART, so it is
+#                                            left alone)
+#
+# All pins were found in the profile, nothing was taken on trust. What no dump
+# can prove is the polarity of the LED and button; both follow the RM4 Mini,
+# whose pin map comes from a live boot log.
+
+substitutions:
+  name: broadlink-rm4-pro
+  friendly_name: Broadlink RM4 Pro
+
+  # Which radio driver the model brings along: `bl3361` for the module of the
+  # RM4 Pro, `none` for an infrared-only device. Names a file in
+  # ../../features/rf/.
+  rf_driver: bl3361
+
+  # Pin map, see the note above. The features get their pins from these
+  # substitutions.
+  pin_ir_tx: PA4
+  pin_ir_rx: PA18
+  pin_status_led: PA7
+  pin_button: PA19
+  pin_rf_data: PA20
 
 packages:
-  ir: !include pro-ir.yaml
-  rf: !include rf.yaml
+  rtl8720c: !include ../../platform/rtl8720c/rtl8720c.yaml
+  base: !include ../../common/base.yaml
+  controls: !include ../../features/controls/controls.yaml
+  ir: !include ../../features/ir/ir.yaml
+  rf: !include ../../features/rf/${rf_driver}.yaml
 
 esphome:
-  # The native radio_frequency entity of rf.yaml exists since ESPHome 2026.10.
-  min_version: 2026.10.0
+  name: ${name}
+  friendly_name: ${friendly_name}
+  project:
+    name: seb5594.broadlink-rm4-pro
+    version: ${project_version}

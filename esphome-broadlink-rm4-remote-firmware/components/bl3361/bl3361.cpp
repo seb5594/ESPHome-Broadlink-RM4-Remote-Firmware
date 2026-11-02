@@ -281,6 +281,7 @@ bool BL3361Component::find_frequency(bool apply) {
   this->mode_ = Mode::UNKNOWN;
   this->edges_.clear();
   this->framer_.reset();
+  this->receive_filter_.reset();
   this->task_ = Task::FIND;
   this->sweep_apply_ = apply;
   this->last_sweep_log_passes_ = 0;
@@ -550,6 +551,7 @@ bool BL3361Component::enter_rx_() {
   delay(MODE_SETTLE_MS);
   this->edges_.clear();
   this->framer_.reset();
+  this->receive_filter_.reset();
   this->last_edge_us_ = micros();
   // The receiver is noisy right after tuning, see SettleGate.
   this->settle_gate_.close_for(millis(), this->settle_ms_);
@@ -613,24 +615,29 @@ void BL3361Component::process_edges_() {
 }
 
 void BL3361Component::publish_frame_(const std::vector<int32_t> &frame) {
-  if (this->log_frames_) {
-    // Keep the log line within reason; the trigger always gets the whole frame.
-    constexpr size_t MAX_LOGGED = 100;
-    std::string text;
-    char piece[16];
-    for (size_t i = 0; i < frame.size() && i < MAX_LOGGED; i++) {
-      std::snprintf(piece, sizeof(piece), i == 0 ? "%+d" : ", %+d", (int) frame[i]);
-      text += piece;
-    }
-    if (frame.size() > MAX_LOGGED)
-      text += ", ...";
-    ESP_LOGI(TAG, "Received %u pulses: [%s]", (unsigned) frame.size(), text.c_str());
-  }
+  ESP_LOGV(TAG, "Frame of %u pulses", (unsigned) frame.size());
   if (this->task_ == Task::LEARN_CAPTURE) {
     this->handle_learn_frame_(frame);  // a learning session keeps the frames to itself
     return;
   }
-  this->receive_trigger_.trigger(frame);
+  // One frame holds pieces of a signal, the filter hands out what is one
+  // transmission each.
+  for (const auto &transmission : this->receive_filter_.push(frame, millis())) {
+    if (this->log_frames_) {
+      // Keep the log line within reason; the trigger always gets the whole code.
+      constexpr size_t MAX_LOGGED = 100;
+      std::string text;
+      char piece[16];
+      for (size_t i = 0; i < transmission.size() && i < MAX_LOGGED; i++) {
+        std::snprintf(piece, sizeof(piece), i == 0 ? "%+d" : ", %+d", (int) transmission[i]);
+        text += piece;
+      }
+      if (transmission.size() > MAX_LOGGED)
+        text += ", ...";
+      ESP_LOGI(TAG, "Received %u pulses: [%s]", (unsigned) transmission.size(), text.c_str());
+    }
+    this->receive_trigger_.trigger(transmission);
+  }
 }
 
 }  // namespace esphome::bl3361

@@ -41,6 +41,7 @@
 #include "protocol.h"
 #include "pulse_framer.h"
 #include "radio_config.h"
+#include "receive_filter.h"
 #include "settle_gate.h"
 #include "sweep.h"
 
@@ -51,7 +52,7 @@ class FrequencyNumber;
 
 class BL3361Component : public Component {
  public:
-  BL3361Component() : framer_(100, 15000, 24, MAX_FRAME_PULSES) {}
+  BL3361Component() : framer_(100, 15000, 24, MAX_FRAME_PULSES), receive_filter_(MAX_FRAME_PULSES, 24, 500) {}
 
   void setup() override;
   void loop() override;
@@ -63,7 +64,15 @@ class BL3361Component : public Component {
   void set_frequency_khz(uint32_t frequency_khz) { this->frequency_khz_ = frequency_khz; }
   void set_pulse_limits(uint32_t filter_us, uint32_t idle_us, size_t min_pulses) {
     this->framer_ = PulseFramer(filter_us, idle_us, min_pulses, MAX_FRAME_PULSES);
+    this->receive_filter_ = ReceiveFilter(MAX_FRAME_PULSES, min_pulses, this->repeat_timeout_ms_);
     this->idle_us_ = idle_us;
+    this->min_pulses_ = min_pulses;
+  }
+  /// The same transmission within this time counts as a repeat and gives no
+  /// event of its own. 0 reports every transmission.
+  void set_repeat_timeout(uint32_t repeat_timeout_ms) {
+    this->repeat_timeout_ms_ = repeat_timeout_ms;
+    this->receive_filter_ = ReceiveFilter(MAX_FRAME_PULSES, this->min_pulses_, repeat_timeout_ms);
   }
   void set_log_frames(bool log_frames) { this->log_frames_ = log_frames; }
   /// Frames in the first moments after tuning are noise and are dropped.
@@ -186,6 +195,9 @@ class BL3361Component : public Component {
   FrameDecoder decoder_;
   EdgeRing<1024> edges_;
   PulseFramer framer_;
+  ReceiveFilter receive_filter_;
+  size_t min_pulses_{24};
+  uint32_t repeat_timeout_ms_{500};
   SettleGate settle_gate_;
   uint32_t settle_ms_{1500};
   uint32_t idle_us_{15000};

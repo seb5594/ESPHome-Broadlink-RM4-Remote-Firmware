@@ -25,6 +25,7 @@ CONF_BL3361_ID = "bl3361_id"
 CONF_DATA_PIN = "data_pin"
 CONF_IDLE = "idle"
 CONF_MIN_PULSES = "min_pulses"
+CONF_REPEAT_TIMEOUT = "repeat_timeout"
 CONF_LOG_FRAMES = "log_frames"
 CONF_RSSI = "rssi"
 CONF_ON_RECEIVE = "on_receive"
@@ -116,6 +117,12 @@ CONFIG_SCHEMA = cv.All(
             ): cv.positive_time_period_microseconds,
             # Frames with fewer pulses are thrown away as noise.
             cv.Optional(CONF_MIN_PULSES, default=24): cv.int_range(min=2, max=500),
+            # The same transmission within this time is a repeat of the one before
+            # (a key that is held repeats its code) and gives no event of its own.
+            # 0ms reports every single transmission.
+            cv.Optional(
+                CONF_REPEAT_TIMEOUT, default="500ms"
+            ): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_LOG_FRAMES, default=True): cv.boolean,
             cv.Optional(CONF_RSSI): sensor.sensor_schema(
                 accuracy_decimals=0,
@@ -181,6 +188,7 @@ async def to_code(config):
             config[CONF_FILTER], config[CONF_IDLE], config[CONF_MIN_PULSES]
         )
     )
+    cg.add(var.set_repeat_timeout(config[CONF_REPEAT_TIMEOUT]))
     cg.add(var.set_log_frames(config[CONF_LOG_FRAMES]))
     cg.add(var.set_settle_time(config[CONF_SETTLE_TIME]))
     cg.add(var.set_sweep_margin(config[CONF_SWEEP_MARGIN]))
