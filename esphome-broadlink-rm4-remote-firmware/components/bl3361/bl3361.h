@@ -24,20 +24,20 @@
 #include "esphome/core/component.h"
 #include "esphome/core/gpio.h"
 #include "esphome/core/helpers.h"
-#include "esphome/components/uart/uart.h"
 
 #ifdef USE_SENSOR
 #include "esphome/components/sensor/sensor.h"
 #endif
 
 #include "edge_ring.h"
+#include "module_serial.h"
 #include "protocol.h"
 #include "pulse_framer.h"
 #include "radio_config.h"
 
 namespace esphome::bl3361 {
 
-class BL3361Component : public Component, public uart::UARTDevice {
+class BL3361Component : public Component {
  public:
   BL3361Component() : framer_(100, 15000, 24, MAX_FRAME_PULSES) {}
 
@@ -86,6 +86,8 @@ class BL3361Component : public Component, public uart::UARTDevice {
   enum class Mode : uint8_t { UNKNOWN, RX, TX };
 
   // ----- UART side -----
+  /// Logs what arrived on the UART while waiting for a reply that never came.
+  void log_missing_reply_(uint16_t command, const uint8_t *received, size_t received_size, size_t received_total);
   /// Sends one request and waits for its reply. Blocks for the round trip,
   /// which is a few milliseconds when the module answers.
   bool transact_(uint16_t command, const uint8_t *payload, size_t payload_size, uint8_t *reply = nullptr,
@@ -108,6 +110,7 @@ class BL3361Component : public Component, public uart::UARTDevice {
   bool wanted_rx_{true};
   bool log_frames_{true};
 
+  ModuleSerial serial_;
   FrameDecoder decoder_;
   EdgeRing<1024> edges_;
   PulseFramer framer_;

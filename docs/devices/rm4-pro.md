@@ -67,7 +67,7 @@ Which gives:
 | Button | `PA19` | rmparam app_keypad_pin 19 | yes, inverted, pull-up |
 | RF data | `PA20` | rf data_pin 20 | yes, `rf.yaml` |
 | Network pin | `PA15` | rmparam app_network_pin 15 | no, also the RX line of the flashing UART |
-| UART to the radio module | `PA14` / `PA13` | UART0 of the stock driver | yes, `rf.yaml`, see [RF module protocol](../rf-protocol.md#what-is-not-confirmed) |
+| UART to the radio module | `PA14` / `PA13` | `uart_drv_open` of the stock driver, port 0 | yes, in the `bl3361` component, see [RF module protocol](../rf-protocol.md#how-the-radio-is-wired) |
 | Boot mode | `PA0` | | pull high at power-up for download mode |
 
 phdindota's table matches the profile in every pin that is used here. Two
@@ -108,7 +108,7 @@ Assistant event with its pulse timings; `rf_send_raw` sends one.
 The radio part is complete as far as the stock firmware shows, but only a
 device can confirm it. The most useful reports:
 
-1. Does the log show `Listening on 433.920 MHz`? If not, which UART pins work?
+1. Does the log show `Listening on 433.920 MHz`? If not, what does the line before it say?
 2. Does a key fob or socket remote produce events?
 3. Does `rf_send_raw` switch a 433 MHz socket?
 4. The photos and screw positions of the RM4 Pro for the opening guide.

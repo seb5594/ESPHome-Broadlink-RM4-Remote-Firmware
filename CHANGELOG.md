@@ -16,6 +16,22 @@
 - The packages build with a LibreTiny branch that fixes the MAC address
   handling (`platform/rtl8720c/rtl8720c.yaml`) instead of the latest release.
   This goes back to a release as soon as one contains the fix.
+- When the module does not answer, the log says whether nothing or something
+  that is no valid frame arrived, and shows the first bytes. `level: VERBOSE`
+  also logs every frame sent.
+
+### Fixed
+
+- **The 433 MHz radio of the RM4 Pro never reached the module.** ESPHome's `uart`
+  component cannot open UART0 of the RTL8720C on `PA14`/`PA13`: the chip can
+  route that UART to two pairs of pins, so LibreTiny leaves the default pins
+  undefined and the component fell back to a software serial that does not
+  exist (`uart is marked FAILED: SoftwareSerial is not implemented for this
+  chip`). The component `bl3361` now opens `Serial0` itself, with the pins and
+  the format the stock firmware uses. `rf.yaml` no longer has a `uart:` section;
+  a `uart:` of your own for the radio (and `uart_id` in `bl3361:`) has to go.
+- The pins and the format are confirmed from the stock firmware dump now, see
+  [RF module protocol](docs/rf-protocol.md#the-uart-protocol).
 
 ## 1.1.0 - 2026-10-23
 

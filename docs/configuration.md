@@ -256,18 +256,14 @@ RM4 Pro. It is not part of `rm4-pro.yaml`, so an infrared-only device stays
 as small as it was:
 
 ```yaml
-uart:        # talks to the radio module
-  - id: rf_uart
-    tx_pin: PA14
-    rx_pin: PA13
-    baud_rate: 115200
-    parity: EVEN
-
 bl3361:      # external component of this repository
-  uart_id: rf_uart
   data_pin: PA20
   frequency: 433.92MHz
 ```
+
+There is no `uart:` section: the component opens UART0 itself (TX `PA14`, RX
+`PA13`, 115200 baud, even parity). ESPHome's `uart` component cannot do that on
+the RTL8720C, see [RF module protocol](rf-protocol.md#how-the-radio-is-wired).
 
 The component loads from this repository through `external_components`, with
 `firmware_ref` choosing the branch or tag. Keep it equal to the `ref` of your
