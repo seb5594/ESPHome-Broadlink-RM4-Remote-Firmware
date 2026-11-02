@@ -4,6 +4,22 @@
 
 ### Added
 
+- **Frequency entity** `RF Frequency` for Home Assistant: choose the frequency of
+  the radio from a list (`315 MHz` and `433.92 MHz` by default, `options:` for
+  your own). The last choice is kept over restarts. `Custom` shows a frequency
+  that is not in the list.
+- **Learning like the Broadlink app**: the actions `rf_learn`,
+  `rf_find_frequency` and `rf_cancel`. The radio sweeps both bands while a key is
+  held, tunes to what it found and captures a signal that repeats. The steps come
+  as the event `esphome.<name>_rf_learn`; [the guide](docs/433mhz.md#learning-a-remote-like-the-broadlink-app)
+  has an automation that shows them as notifications and prints the finished
+  action.
+- `rf_send_raw_at` sends on another frequency for one code, `frequency_mhz` is in
+  the event `esphome.<name>_rf_received` now, and `sweep_margin` and
+  `settle_time` are options of `bl3361:`.
+- Host tests for the frequency search, the detection of repeated frames, the
+  settle window and the time handling.
+
 - The `mac_address` substitution. Some BL3357 modules have no MAC address in
   the chip, so the Wi-Fi driver gives every one of them `00:e0:4c:b7:23:00` and
   an RM4 Pro and an RM4C Mini on the same network ended up sharing MAC and IP
@@ -22,6 +38,12 @@
 
 ### Fixed
 
+- **Frames were cut in two at random places.** The interval between two edges
+  sometimes came out negative and was read as 71 minutes, which ended the frame;
+  it shows in the log as the marker `+1073741823`. Such an interval counts as 0
+  now.
+- **Noise right after tuning** produced a handful of frames and events.
+  Everything in the first 1.5 s after tuning is dropped (`settle_time`).
 - **The 433 MHz radio of the RM4 Pro never reached the module.** ESPHome's `uart`
   component cannot open UART0 of the RTL8720C on `PA14`/`PA13`: the chip can
   route that UART to two pairs of pins, so LibreTiny leaves the default pins

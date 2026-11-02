@@ -48,6 +48,22 @@ A line `uart is marked FAILED: SoftwareSerial is not implemented for this chip`
 comes from an older version of `rf.yaml` that still declared a `uart:` section.
 Update the package and remove that section from your own config.
 
+**`rf_learn` or `rf_find_frequency` finds no transmitter**
+Hold the key of the remote about 10 cm from the device for the whole sweep,
+which takes a few seconds per pass. Check the log (`level: DEBUG`): every pass
+prints its strongest channel and the average. If the strongest channel is only
+one or two above the average although the remote is right there, lower
+`sweep_margin` in the `bl3361:` section (default 3). A remote that sends only
+once per press, with long pauses, is easier to find with `rf_scan` and
+`rf_set_frequency`.
+
+**`rf_learn` finds the frequency but no code**
+The code has to be seen twice. Press the key briefly, a few times in a row,
+once the notification asks for it. A remote that sends a different code every
+time (rolling code) never repeats and cannot be learned. A code that is received
+but not matched has a different number of pulses or timings each time: look at
+the `Received ... pulses` lines.
+
 **The radio answers, but nothing is received**
 Test against a known good signal source first, see
 [Testing 433 MHz](433mhz.md#testing-without-owning-a-433-mhz-device). The

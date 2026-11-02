@@ -53,6 +53,13 @@ bl3361:
   id: rf
   data_pin: ${pin_rf_data}
   frequency: ${rf_frequency}
+  # The frequency as a choice in Home Assistant. The last one used is kept over
+  # a restart, so `rf_frequency` only decides the very first start. "Custom"
+  # shows up when the radio sits on a frequency that is not in the list, for
+  # example after `rf_learn` found one. Add your own frequencies like this:
+  #   options: [315MHz, 433.92MHz, 433.42MHz]
+  frequency_select:
+    name: RF Frequency
   # If a transmitter in reach produces no frames at all, but the log shows the
   # module answering, try inverting the data pin (the idle level is unknown):
   #   data_pin:
@@ -65,6 +72,7 @@ bl3361:
     - homeassistant.event:
         event: esphome.${name}_rf_received
         data:
+          frequency_mhz: !lambda 'return str_sprintf("%.3f", id(rf).frequency_khz() / 1e3f);'
           pulses: !lambda "return to_string(x.size());"
           code: !lambda |-
             std::string text;
@@ -72,6 +80,23 @@ bl3361:
               if (i != 0)
                 text += ",";
               text += to_string(x[i]);
+            }
+            return text;
+  # Steps of a frequency search or a learning session, see docs/433mhz.md. The
+  # phases are sweep, found, capture, learned, timeout, cancelled and failed.
+  on_learn:
+    - homeassistant.event:
+        event: esphome.${name}_rf_learn
+        data:
+          phase: !lambda "return phase;"
+          frequency_mhz: !lambda 'return str_sprintf("%.3f", frequency_mhz);'
+          repeats: !lambda "return to_string(repeats);"
+          code: !lambda |-
+            std::string text;
+            for (size_t i = 0; i < code.size(); i++) {
+              if (i != 0)
+                text += ",";
+              text += to_string(code[i]);
             }
             return text;
 
@@ -88,6 +113,18 @@ api:
         - bl3361.send_raw:
             code: !lambda "return code;"
             repeat: !lambda "return repeat;"
+    # The same on another frequency, for this code only. The radio goes back to
+    # the selected frequency afterwards.
+    - action: rf_send_raw_at
+      variables:
+        code: int[]
+        repeat: int
+        frequency_mhz: float
+      then:
+        - bl3361.send_raw:
+            code: !lambda "return code;"
+            repeat: !lambda "return repeat;"
+            frequency: !lambda "return frequency_mhz * 1e6;"
     # Retunes the radio, e.g. 868 is not possible, 315.0 or 433.92 are.
     - action: rf_set_frequency
       variables:
@@ -95,6 +132,22 @@ api:
       then:
         - bl3361.set_frequency:
             frequency: !lambda "return frequency_mhz * 1e6;"
+    # Searches both bands for a transmitter while you hold a key of the remote
+    # and tunes the radio to it. The result comes as the event
+    # esphome.<name>_rf_learn with the phases sweep and found.
+    - action: rf_find_frequency
+      then:
+        - bl3361.find_frequency:
+    # Like the learning of the original firmware: hold a key (the frequency is
+    # searched), then press it briefly a few times (the code is captured). The
+    # steps and the result come as the event esphome.<name>_rf_learn.
+    - action: rf_learn
+      then:
+        - bl3361.learn:
+    # Ends a search or learning session.
+    - action: rf_cancel
+      then:
+        - bl3361.cancel:
     # Logs the signal strength on the channels around the frequency. Press a
     # remote while it runs to see which channel lights up.
     - action: rf_scan

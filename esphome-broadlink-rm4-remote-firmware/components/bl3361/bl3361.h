@@ -16,26 +16,37 @@
 // also why remote_receiver / remote_transmitter are not used here: on the
 // RTL8720C an interrupt and a GPIO output cannot be active on the same pad,
 // and ESPHome's transmitter drives the pad through the PWM peripheral.
+//
+// On top of that sit the two things the stock firmware offers when it learns a
+// remote: finding the frequency of a transmitter (sweep.h) and telling a real
+// signal from noise by its repetition (frame_match.h).
 
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "esphome/core/automation.h"
 #include "esphome/core/component.h"
 #include "esphome/core/gpio.h"
 #include "esphome/core/helpers.h"
+#include "esphome/core/preferences.h"
 
 #ifdef USE_SENSOR
 #include "esphome/components/sensor/sensor.h"
 #endif
 
 #include "edge_ring.h"
+#include "frame_match.h"
 #include "module_serial.h"
 #include "protocol.h"
 #include "pulse_framer.h"
 #include "radio_config.h"
+#include "settle_gate.h"
+#include "sweep.h"
 
 namespace esphome::bl3361 {
+
+class FrequencySelect;
 
 class BL3361Component : public Component {
  public:
@@ -54,26 +65,54 @@ class BL3361Component : public Component {
     this->idle_us_ = idle_us;
   }
   void set_log_frames(bool log_frames) { this->log_frames_ = log_frames; }
+  /// Frames in the first moments after tuning are noise and are dropped.
+  void set_settle_time(uint32_t settle_ms) { this->settle_ms_ = settle_ms; }
+  /// How far the strongest channel has to stand out when searching a frequency.
+  void set_sweep_margin(uint8_t margin) { this->sweep_.set_margin(margin); }
+  /// Entity that shows and sets the frequency. With restore the last frequency
+  /// survives a restart.
+  void set_frequency_select(FrequencySelect *select, bool restore) {
+    this->frequency_select_ = select;
+    this->restore_frequency_ = restore;
+  }
 #ifdef USE_SENSOR
   void set_rssi_sensor(sensor::Sensor *sensor) { this->rssi_sensor_ = sensor; }
   void set_rssi_interval(uint32_t interval_ms) { this->rssi_interval_ms_ = interval_ms; }
 #endif
   Trigger<std::vector<int32_t>> *get_receive_trigger() { return &this->receive_trigger_; }
+  /// Fires while a frequency search or a learning session progresses: the
+  /// phase ("sweep", "found", "capture", "learned", "timeout" or "failed"),
+  /// the frequency in MHz, how often the code was seen and the code itself.
+  Trigger<std::string, float, uint32_t, std::vector<int32_t>> *get_learn_trigger() { return &this->learn_trigger_; }
+
+  uint32_t frequency_khz() const { return this->plan_.frequency_khz(); }
 
   // ----- Actions -----
 
   /// Tunes to the frequency and starts listening.
   bool start_receive();
-  /// Stops listening and puts the module into idle.
+  /// Stops listening, ends a search or learning session and puts the module into idle.
   void stop();
   /// Sends a raw code (positive = signal on, negative = signal off, in
   /// microseconds), `repeat` times in a row, then goes back to listening.
-  bool send_raw(const std::vector<int32_t> &code, uint32_t repeat, uint32_t gap_us);
+  /// With a frequency (kHz) other than 0 it transmits on that one and returns to
+  /// the configured frequency afterwards.
+  bool send_raw(const std::vector<int32_t> &code, uint32_t repeat, uint32_t gap_us, uint32_t frequency_khz = 0);
   /// Retunes (and keeps listening if it was). Fails outside the supported bands.
+  /// A frequency set this way is remembered if the frequency entity restores it.
   bool set_frequency(uint32_t frequency_khz);
   /// Reads the signal strength on every channel around the current frequency
   /// and logs the result. Meant for finding the real carrier of a remote.
   void scan();
+  /// Searches both bands for a transmitter while a key is held. With `apply`
+  /// the module is tuned to what was found. Returns at once, the result comes
+  /// through the learn trigger.
+  bool find_frequency(bool apply);
+  /// Ends a frequency search or learning session and goes back to listening.
+  void cancel();
+  /// Like the stock firmware's learning: find the frequency, then capture a
+  /// signal that repeats. Returns at once, progress comes through the learn trigger.
+  bool learn();
 
  protected:
   static constexpr size_t MAX_FRAME_PULSES = 512;
@@ -82,8 +121,11 @@ class BL3361Component : public Component {
   static constexpr uint32_t REPLY_TIMEOUT_MS = 300;
   static constexpr uint32_t RETRY_INTERVAL_MS = 10000;
   static constexpr uint32_t MODE_SETTLE_MS = 10;
+  /// How long learning waits for a signal that repeats.
+  static constexpr uint32_t LEARN_CAPTURE_TIMEOUT_MS = 20000;
 
   enum class Mode : uint8_t { UNKNOWN, RX, TX };
+  enum class Task : uint8_t { NONE, FIND, LEARN_SWEEP, LEARN_CAPTURE };
 
   // ----- UART side -----
   /// Logs what arrived on the UART while waiting for a reply that never came.
@@ -92,15 +134,29 @@ class BL3361Component : public Component {
   /// which is a few milliseconds when the module answers.
   bool transact_(uint16_t command, const uint8_t *payload, size_t payload_size, uint8_t *reply = nullptr,
                  size_t *reply_size = nullptr);
-  bool configure_(Direction direction);
+  bool configure_(const FrequencyPlan &plan, Direction direction);
   bool read_rssi_(uint8_t *rssi);
 
   // ----- Data pin side -----
   bool enter_rx_();
-  bool enter_tx_();
+  bool enter_tx_(const FrequencyPlan &plan);
   void process_edges_();
   void publish_frame_(const std::vector<int32_t> &frame);
   static void IRAM_ATTR HOT on_edge_(BL3361Component *self);
+
+  // ----- Frequency -----
+  /// Remembers the frequency and tells the entity. `persist` also stores it.
+  void frequency_changed_(bool persist);
+
+  // ----- Search and learning -----
+  void run_sweep_(uint32_t now);
+  void finish_sweep_(uint32_t now);
+  void begin_capture_(uint32_t now);
+  void handle_learn_frame_(const std::vector<int32_t> &frame);
+  void fire_learn_(const char *phase, uint32_t frequency_khz, uint32_t repeats, const std::vector<int32_t> &code);
+  /// What the sweep needs from the module, see sweep.h.
+  bool sweep_tune_(const FrequencyPlan &plan);
+  bool sweep_read_(uint8_t channel, uint8_t *rssi);
 
   InternalGPIOPin *data_pin_{nullptr};
   ISRInternalGPIOPin isr_pin_;
@@ -114,6 +170,8 @@ class BL3361Component : public Component {
   FrameDecoder decoder_;
   EdgeRing<1024> edges_;
   PulseFramer framer_;
+  SettleGate settle_gate_;
+  uint32_t settle_ms_{1500};
   uint32_t idle_us_{15000};
   volatile uint32_t last_edge_us_{0};
   uint32_t last_attempt_ms_{0};
@@ -121,7 +179,19 @@ class BL3361Component : public Component {
   bool module_seen_{false};
   uint32_t reported_overflows_{0};
 
+  Task task_{Task::NONE};
+  FrequencySweep sweep_;
+  FrameCollector collector_;
+  bool sweep_apply_{true};
+  uint32_t capture_deadline_ms_{0};
+  uint32_t last_sweep_log_passes_{0};
+
+  FrequencySelect *frequency_select_{nullptr};
+  bool restore_frequency_{false};
+  ESPPreferenceObject frequency_pref_;
+
   Trigger<std::vector<int32_t>> receive_trigger_;
+  Trigger<std::string, float, uint32_t, std::vector<int32_t>> learn_trigger_;
 #ifdef USE_SENSOR
   sensor::Sensor *rssi_sensor_{nullptr};
   uint32_t rssi_interval_ms_{1000};

@@ -6,19 +6,20 @@ data pin. See protocol.h for where the knowledge about the module comes from.
 
 from esphome import automation, pins
 import esphome.codegen as cg
-from esphome.components import sensor
+from esphome.components import select, sensor
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_CODE,
     CONF_FILTER,
     CONF_FREQUENCY,
     CONF_ID,
+    CONF_OPTIONS,
     CONF_UPDATE_INTERVAL,
     STATE_CLASS_MEASUREMENT,
 )
 
 CODEOWNERS = ["@seb5594"]
-AUTO_LOAD = ["sensor"]
+AUTO_LOAD = ["sensor", "select"]
 
 CONF_BL3361_ID = "bl3361_id"
 CONF_DATA_PIN = "data_pin"
@@ -29,6 +30,12 @@ CONF_RSSI = "rssi"
 CONF_ON_RECEIVE = "on_receive"
 CONF_REPEAT = "repeat"
 CONF_GAP = "gap"
+CONF_SETTLE_TIME = "settle_time"
+CONF_SWEEP_MARGIN = "sweep_margin"
+CONF_FREQUENCY_SELECT = "frequency_select"
+CONF_RESTORE_VALUE = "restore_value"
+CONF_ON_LEARN = "on_learn"
+CONF_APPLY = "apply"
 
 # Tuning ranges of the module in kHz, see radio_config.h.
 SUPPORTED_BANDS_KHZ = ((305000, 339999), (430000, 439999))
@@ -36,7 +43,14 @@ SUPPORTED_BANDS_KHZ = ((305000, 339999), (430000, 439999))
 bl3361_ns = cg.esphome_ns.namespace("bl3361")
 BL3361Component = bl3361_ns.class_("BL3361Component", cg.Component)
 
+FrequencySelect = bl3361_ns.class_(
+    "FrequencySelect", select.Select, cg.Parented.template(BL3361Component)
+)
+
 StartReceiveAction = bl3361_ns.class_("StartReceiveAction", automation.Action)
+FindFrequencyAction = bl3361_ns.class_("FindFrequencyAction", automation.Action)
+LearnAction = bl3361_ns.class_("LearnAction", automation.Action)
+CancelAction = bl3361_ns.class_("CancelAction", automation.Action)
 StopAction = bl3361_ns.class_("StopAction", automation.Action)
 ScanAction = bl3361_ns.class_("ScanAction", automation.Action)
 SetFrequencyAction = bl3361_ns.class_("SetFrequencyAction", automation.Action)
@@ -53,6 +67,21 @@ def validate_frequency(value):
             f"{hertz / 1e6:.3f} MHz is outside"
         )
     return hertz
+
+
+def frequency_option_name(hertz):
+    """How an option of the frequency entity is called: 433.92 MHz."""
+    return f"{hertz / 1e6:g} MHz"
+
+
+def validate_frequency_options(value):
+    """A list of frequencies for the select entity, without duplicates."""
+    options = cv.ensure_list(validate_frequency)(value)
+    if len(set(options)) != len(options):
+        raise cv.Invalid("Every frequency can only be in the list once")
+    if not options:
+        raise cv.Invalid("The list needs at least one frequency")
+    return options
 
 
 def validate_code(value):
@@ -95,9 +124,33 @@ CONFIG_SCHEMA = cv.All(
                     ): cv.positive_time_period_milliseconds,
                 }
             ),
+            # Frames in the first moments after tuning are noise of the
+            # receiver and not dropped by length alone.
+            cv.Optional(
+                CONF_SETTLE_TIME, default="1500ms"
+            ): cv.positive_time_period_milliseconds,
+            # How far the strongest channel has to stand out of the average of
+            # all channels when searching a frequency (relative signal strength).
+            cv.Optional(CONF_SWEEP_MARGIN, default=3): cv.int_range(min=1, max=20),
+            # The frequency of the radio as a choice in Home Assistant.
+            cv.Optional(CONF_FREQUENCY_SELECT): select.select_schema(
+                FrequencySelect,
+                entity_category="config",
+                icon="mdi:sine-wave",
+            ).extend(
+                {
+                    cv.Optional(
+                        CONF_OPTIONS, default=["315MHz", "433.92MHz"]
+                    ): validate_frequency_options,
+                    # Remember the last frequency over a restart.
+                    cv.Optional(CONF_RESTORE_VALUE, default=True): cv.boolean,
+                }
+            ),
             # The trigger belongs to the component, so there is exactly one
             # list of actions.
             cv.Optional(CONF_ON_RECEIVE): automation.validate_automation(single=True),
+            # Progress of a frequency search or a learning session.
+            cv.Optional(CONF_ON_LEARN): automation.validate_automation(single=True),
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
@@ -118,11 +171,35 @@ async def to_code(config):
         )
     )
     cg.add(var.set_log_frames(config[CONF_LOG_FRAMES]))
+    cg.add(var.set_settle_time(config[CONF_SETTLE_TIME]))
+    cg.add(var.set_sweep_margin(config[CONF_SWEEP_MARGIN]))
+
+    if CONF_FREQUENCY_SELECT in config:
+        conf = config[CONF_FREQUENCY_SELECT]
+        options = conf[CONF_OPTIONS]
+        # The last option, "Custom", shows a frequency that is not in the list.
+        names = [frequency_option_name(hertz) for hertz in options] + ["Custom"]
+        sel = await select.new_select(conf, options=names)
+        await cg.register_parented(sel, config[CONF_ID])
+        cg.add(sel.set_options_khz([round(hertz / 1000) for hertz in options]))
+        cg.add(var.set_frequency_select(sel, conf[CONF_RESTORE_VALUE]))
 
     if CONF_RSSI in config:
         rssi = await sensor.new_sensor(config[CONF_RSSI])
         cg.add(var.set_rssi_sensor(rssi))
         cg.add(var.set_rssi_interval(config[CONF_RSSI][CONF_UPDATE_INTERVAL]))
+
+    if CONF_ON_LEARN in config:
+        await automation.build_automation(
+            var.get_learn_trigger(),
+            [
+                (cg.std_string, "phase"),
+                (cg.float_, "frequency_mhz"),
+                (cg.uint32, "repeats"),
+                (cg.std_vector.template(cg.int32), "code"),
+            ],
+            config[CONF_ON_LEARN],
+        )
 
     if CONF_ON_RECEIVE in config:
         await automation.build_automation(
@@ -145,6 +222,34 @@ async def register_simple_action(config, action_id, template_arg, args):
     "bl3361.start_receive", StartReceiveAction, ACTION_BASE_SCHEMA, synchronous=True
 )
 async def start_receive_to_code(config, action_id, template_arg, args):
+    return await register_simple_action(config, action_id, template_arg, args)
+
+
+@automation.register_action(
+    "bl3361.find_frequency",
+    FindFrequencyAction,
+    ACTION_BASE_SCHEMA.extend(
+        {cv.Optional(CONF_APPLY, default=True): cv.templatable(cv.boolean)}
+    ),
+    synchronous=True,
+)
+async def find_frequency_to_code(config, action_id, template_arg, args):
+    var = await register_simple_action(config, action_id, template_arg, args)
+    cg.add(var.set_apply(await cg.templatable(config[CONF_APPLY], args, bool)))
+    return var
+
+
+@automation.register_action(
+    "bl3361.cancel", CancelAction, ACTION_BASE_SCHEMA, synchronous=True
+)
+async def cancel_to_code(config, action_id, template_arg, args):
+    return await register_simple_action(config, action_id, template_arg, args)
+
+
+@automation.register_action(
+    "bl3361.learn", LearnAction, ACTION_BASE_SCHEMA, synchronous=True
+)
+async def learn_to_code(config, action_id, template_arg, args):
     return await register_simple_action(config, action_id, template_arg, args)
 
 
@@ -189,6 +294,9 @@ async def set_frequency_to_code(config, action_id, template_arg, args):
             cv.Optional(CONF_GAP, default="10ms"): cv.templatable(
                 cv.positive_time_period_microseconds
             ),
+            # Transmit on this frequency instead of the configured one, for this
+            # code only. Without it the current frequency is used.
+            cv.Optional(CONF_FREQUENCY): cv.templatable(validate_frequency),
         }
     ),
     synchronous=True,
@@ -203,4 +311,10 @@ async def send_raw_to_code(config, action_id, template_arg, args):
         cg.add(var.set_code_static(code))
     cg.add(var.set_repeat(await cg.templatable(config[CONF_REPEAT], args, cg.uint32)))
     cg.add(var.set_gap_us(await cg.templatable(config[CONF_GAP], args, cg.uint32)))
+    if CONF_FREQUENCY in config:
+        cg.add(
+            var.set_frequency_hz(
+                await cg.templatable(config[CONF_FREQUENCY], args, cg.uint32)
+            )
+        )
     return var
