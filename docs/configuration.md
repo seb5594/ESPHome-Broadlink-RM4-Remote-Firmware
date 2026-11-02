@@ -277,6 +277,44 @@ package. The component has its own options (`filter`, `idle`, `min_pulses`,
 [433 MHz guide](433mhz.md). How the radio module works is written down in
 [RF module protocol](rf-protocol.md).
 
+## Same MAC address on several devices
+
+Some of the Wi-Fi modules (BL3357) have no MAC address stored in the chip. The
+driver then uses its built-in `00:e0:4c:b7:23:00` for every unit, and two
+devices on one network end up with the same MAC and the same IP address. Check
+the MAC of your device in the router or in the ESPHome log.
+
+The fix is to give each device its real address. It is printed on the label of
+the device and shown in the Broadlink app. Add the package `mac-address.yaml`
+and the address to your config:
+
+```yaml
+substitutions:
+  mac_address: "aa:bb:cc:dd:ee:ff"
+
+packages:
+  broadlink_rm4_mini:
+    url: https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware
+    ref: main
+    files:
+      - esphome-broadlink-rm4-remote-firmware/devices/rm4-mini/rm4-mini.yaml
+      - esphome-broadlink-rm4-remote-firmware/platform/rtl8720c/mac-address.yaml
+    refresh: 1d
+```
+
+The address is only held in RAM, nothing is written to the chip, and removing
+the package undoes it. The router sees the new address after the next reboot,
+so expect a new DHCP lease. Keep `firmware_ref` equal to the `ref` of your
+package if you do not use `main`.
+
+If you still have the stock firmware backup, the real address is in it: it is
+the six bytes at offset `0x4008` (the sector at `0x4000` starts with the text
+`CALD`). A flashed device has lost that sector.
+
+Do not set a MAC address through `on_boot` and `WiFi.setMacAddress()` or
+`wifi_set_mac_address()` in a lambda. In current LibreTiny releases those write
+the address permanently into the chip's eFuse, with the wrong format on top.
+
 ## Customizing
 
 Everything in the package can be changed from your own config:

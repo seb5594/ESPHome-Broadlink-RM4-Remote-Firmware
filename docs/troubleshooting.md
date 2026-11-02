@@ -27,6 +27,12 @@ Raise `ir_receiver_idle` to `80ms`.
 It opens a hotspot named after the device when it can't connect. Check the
 Wi-Fi credentials in your secrets; only 2.4 GHz networks work.
 
+**Two devices have the same MAC and IP address**
+If the router shows `00:e0:4c:b7:23:00` for both, their Wi-Fi modules have no
+address of their own and the driver gives every unit the same one. Add the
+real address of each device, see
+[Same MAC address on several devices](configuration.md#same-mac-address-on-several-devices).
+
 **The 433 MHz radio does not answer (RM4 Pro)**
 The log says `The RF module does not answer on the UART`. The radio is
 experimental and its UART pins are the least certain part of the setup, see

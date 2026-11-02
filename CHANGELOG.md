@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Optional package `platform/rtl8720c/mac-address.yaml` and the external
+  component `rtl87xx_mac` to set the Wi-Fi MAC address. Some BL3357 modules have
+  no MAC address in the chip, so the Wi-Fi driver gives every one of them
+  `00:e0:4c:b7:23:00`, and an RM4 Pro and an RM4C Mini on the same network end
+  up sharing MAC and IP address. The address is only held in RAM; nothing is
+  written to the chip. Not confirmed on a device yet.
+
 ## 1.1.0 - 2026-10-23
 
 The repository grows from a single-device project into ESPHome Broadlink RM4,

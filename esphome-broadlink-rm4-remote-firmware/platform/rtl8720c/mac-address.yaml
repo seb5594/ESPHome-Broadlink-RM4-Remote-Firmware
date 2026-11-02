@@ -1,0 +1,33 @@
+# Optional: sets the Wi-Fi MAC address of the device.
+#
+# Some BL3357 modules have no MAC address stored in the chip. The Wi-Fi driver
+# then uses the same built-in one on every unit (00:e0:4c:b7:23:00), so two
+# Broadlink devices on one network share a MAC and, through DHCP, an IP address.
+# Add this file to the package list of each affected device and put the real
+# address into the substitution `mac_address`:
+#
+#   substitutions:
+#     mac_address: "ec:0b:ae:9e:21:c1"
+#
+# The real address is on the label of the device and shown in the Broadlink
+# app. The address is only kept in RAM, nothing is written to the chip.
+
+substitutions:
+  # Required. The build fails with "invalid MAC address" while this is empty.
+  mac_address: ""
+  # Where the external component is loaded from. Keep both in step with the
+  # package reference of your device config.
+  firmware_url: https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware
+  firmware_ref: main
+
+external_components:
+  - source:
+      type: git
+      url: ${firmware_url}
+      ref: ${firmware_ref}
+      path: esphome-broadlink-rm4-remote-firmware/components
+    components: [rtl87xx_mac]
+    refresh: 1d
+
+rtl87xx_mac:
+  mac_address: ${mac_address}
