@@ -6,7 +6,7 @@ data pin. See protocol.h for where the knowledge about the module comes from.
 
 from esphome import automation, pins
 import esphome.codegen as cg
-from esphome.components import sensor, uart
+from esphome.components import sensor
 import esphome.config_validation as cv
 from esphome.const import (
     CONF_CODE,
@@ -18,7 +18,6 @@ from esphome.const import (
 )
 
 CODEOWNERS = ["@seb5594"]
-DEPENDENCIES = ["uart"]
 AUTO_LOAD = ["sensor"]
 
 CONF_BL3361_ID = "bl3361_id"
@@ -35,7 +34,7 @@ CONF_GAP = "gap"
 SUPPORTED_BANDS_KHZ = ((305000, 339999), (430000, 439999))
 
 bl3361_ns = cg.esphome_ns.namespace("bl3361")
-BL3361Component = bl3361_ns.class_("BL3361Component", cg.Component, uart.UARTDevice)
+BL3361Component = bl3361_ns.class_("BL3361Component", cg.Component)
 
 StartReceiveAction = bl3361_ns.class_("StartReceiveAction", automation.Action)
 StopAction = bl3361_ns.class_("StopAction", automation.Action)
@@ -66,7 +65,7 @@ def validate_code(value):
     return pulses
 
 
-CONFIG_SCHEMA = (
+CONFIG_SCHEMA = cv.All(
     cv.Schema(
         {
             cv.GenerateID(): cv.declare_id(BL3361Component),
@@ -101,27 +100,15 @@ CONFIG_SCHEMA = (
             cv.Optional(CONF_ON_RECEIVE): automation.validate_automation(single=True),
         }
     )
-    .extend(cv.COMPONENT_SCHEMA)
-    .extend(uart.UART_DEVICE_SCHEMA)
-)
-
-# The stock firmware talks to the module with 115200 baud, 8 data bits, even
-# parity and one stop bit, on UART0 of the RTL8720CF.
-FINAL_VALIDATE_SCHEMA = uart.final_validate_device_schema(
-    "bl3361",
-    baud_rate=115200,
-    require_tx=True,
-    require_rx=True,
-    data_bits=8,
-    parity="EVEN",
-    stop_bits=1,
+    .extend(cv.COMPONENT_SCHEMA),
+    # The serial link uses LibreTiny's Serial0, see module_serial.h.
+    cv.only_on(["rtl87xx"]),
 )
 
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
-    await uart.register_uart_device(var, config)
 
     cg.add(var.set_data_pin(await cg.gpio_pin_expression(config[CONF_DATA_PIN])))
     cg.add(var.set_frequency_khz(round(config[CONF_FREQUENCY] / 1000)))

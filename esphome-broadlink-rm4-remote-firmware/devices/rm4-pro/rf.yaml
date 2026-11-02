@@ -1,24 +1,23 @@
 # 433 MHz radio of the Broadlink RM4 Pro. EXPERIMENTAL, not confirmed on a
 # device yet. Optional: the device works without this file, it only adds RF.
 #
-# The radio is the separate BL3361 module. This file wires up the pieces:
+# The radio is the separate BL3361 module. The component `bl3361` of this
+# repository handles both connections to it:
 #
-#   uart:    tunes the module (frequency, receive/transmit switch, signal
-#            strength). 115200 baud, 8 data bits, even parity, 1 stop bit
-#   bl3361:  the external component of this repository, it also owns the raw
-#            data pin that carries the demodulated signal in and the signal
-#            to transmit out
+#   UART0    commands: tunes the module (frequency, receive/transmit switch,
+#            signal strength). TX PA14, RX PA13, 115200 baud, 8 data bits, even
+#            parity, 1 stop bit. The component opens the port itself, there is
+#            no `uart:` section to write
+#   data pin the raw data pin that carries the demodulated signal in and the
+#            signal to transmit out
 #
 # Evidence (all of it read from the stock firmware dump, see
 # docs/devices/rm4-pro.md for how):
 #   - The hardware profile of the stock firmware lists `rf` = [9, 0, 90, 20]:
 #     the last number is the data pin of the radio, 20 -> PA20. Phdindota's
 #     notes name the same pin.
-#   - The stock driver talks to the module on UART0 of the RTL8720CF. LibreTiny
-#     routes UART0 to PA14 (TX) and PA13 (RX) on this chip, and the logger of
-#     this project runs on UART2, so the two do not collide. The pins are the
-#     least certain part of this file: if the module stays silent, try the
-#     other pad pair of UART0 (TX PA11, RX PA12).
+#   - The UART driver of the stock firmware opens port 0 with pins 14 (TX) and
+#     13 (RX) and the format above, and the RF driver asks for port 0.
 #
 # What you get:
 #   - Received 433 MHz codes are logged and fired as the Home Assistant event
@@ -40,9 +39,6 @@ substitutions:
 
   # Raw data pin of the radio, taken from the profile of the stock firmware.
   pin_rf_data: PA20
-  # UART to the radio module, see the note above.
-  pin_rf_uart_tx: PA14
-  pin_rf_uart_rx: PA13
 
 external_components:
   - source:
@@ -53,18 +49,8 @@ external_components:
     components: [bl3361]
     refresh: 1d
 
-uart:
-  - id: rf_uart
-    tx_pin: ${pin_rf_uart_tx}
-    rx_pin: ${pin_rf_uart_rx}
-    baud_rate: 115200
-    parity: EVEN
-    data_bits: 8
-    stop_bits: 1
-
 bl3361:
   id: rf
-  uart_id: rf_uart
   data_pin: ${pin_rf_data}
   frequency: ${rf_frequency}
   # If a transmitter in reach produces no frames at all, but the log shows the

@@ -34,12 +34,19 @@ real address of each device, see
 [Same MAC address on several devices](configuration.md#same-mac-address-on-several-devices).
 
 **The 433 MHz radio does not answer (RM4 Pro)**
-The log says `The RF module does not answer on the UART`. The radio is
-experimental and its UART pins are the least certain part of the setup, see
-[RF module protocol](rf-protocol.md#what-is-not-confirmed). Check that
-`rf.yaml` is in the package list, then try the other pad pair of UART0:
-`pin_rf_uart_tx: PA11` and `pin_rf_uart_rx: PA12`. Please report what you find
-in an [issue](https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware/issues).
+The log says `No reply to command 0x60E` or `The RF module does not answer on
+the UART`. The line before or after tells which case it is:
+`nothing arrived on the UART` means the module said nothing at all, and
+`N bytes arrived on the UART` followed by bytes means it answered, but not in a
+frame the component understands. Please open an
+[issue](https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware/issues)
+with the log, set `level: VERBOSE` in `logger` to also see every frame that is
+sent. The UART pins (`PA14`/`PA13`) are not configurable: they are the ones the
+stock firmware uses.
+
+A line `uart is marked FAILED: SoftwareSerial is not implemented for this chip`
+comes from an older version of `rf.yaml` that still declared a `uart:` section.
+Update the package and remove that section from your own config.
 
 **The radio answers, but nothing is received**
 Test against a known good signal source first, see

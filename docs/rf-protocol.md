@@ -21,7 +21,7 @@ and is the one ESPHome runs on. The 433 MHz radio is a separate module,
 
 | Connection | What goes over it |
 |---|---|
-| UART0 of the RTL8720CF | Commands: tune, switch between receive and transmit, read the signal strength. |
+| UART0 of the RTL8720CF, TX `PA14` and RX `PA13` | Commands: tune, switch between receive and transmit, read the signal strength. |
 | One raw data pin, `PA20` | The radio signal itself. In receive mode the module puts the demodulated OOK signal on it; in transmit mode it keys its transmitter with the level the Wi-Fi chip drives onto it. |
 
 The stock firmware switches no other pin for the module: there is no reset
@@ -34,7 +34,20 @@ on.
 
 ## The UART protocol
 
-115200 baud, 8 data bits, even parity, 1 stop bit. Every request is one frame,
+115200 baud, 8 data bits, even parity, 1 stop bit, on `PA14` (TX) and `PA13`
+(RX). The stock firmware opens the port in one function (`uart_drv_open`): for
+port 0 it passes pin 14 as TX and pin 13 as RX to the UART driver, and the RF
+driver asks for port 0 with baud rate 115200, parity value 2 (`UartParityEven`
+in the SDK), 8 data bits and one stop bit.
+
+The component does not use ESPHome's `uart` component for this. On the RTL8720C,
+UART0 can be routed to two pairs of pins (`PA11`/`PA12` and `PA13`/`PA14`), so
+LibreTiny leaves `PIN_SERIAL0_TX` and `PIN_SERIAL0_RX` undefined, and ESPHome
+only matches pins against exactly these names. `PA14`/`PA13` therefore end up on
+a software serial that does not exist on this chip, and the writes go to the
+log UART instead. The component opens `Serial0` itself and names the pins.
+
+Every request is one frame,
 and the module answers with a frame whose command number is the request's plus
 one. The stock driver waits up to 300 ms for the answer.
 
@@ -125,9 +138,6 @@ index or checksum would show up.
 
 Treat the following as open until somebody has tested it on a device:
 
-- The **UART pins**. The stock driver uses UART0 of the RTL8720CF. In
-  LibreTiny that is `PA14` (TX) and `PA13` (RX), with `PA11`/`PA12` as the other
-  pad pair of the same UART. The defaults in `rf.yaml` use the first pair.
 - The **idle level and polarity** of the data pin. If a transmitter is in
   range but nothing is received, set `inverted: true` on the `data_pin`.
 - Whether the module needs **longer settling times** than the 10 ms the

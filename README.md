@@ -229,7 +229,7 @@ are in [Home Assistant and HAIR](docs/home-assistant.md).
 
 > **Experimental.** The radio driver was written from a flash dump of the
 > stock firmware. It has not been confirmed on a device yet, and may need
-> adjustments (UART pins, signal polarity). Infrared does not depend on it.
+> adjustments (signal polarity, timing). Infrared does not depend on it.
 
 The 433 MHz radio of the RM4 Pro is a separate module, BL3361-1. The Wi-Fi chip
 tunes it over a UART and exchanges the raw signal with it through one data pin.
@@ -319,8 +319,7 @@ Use a commit hash or tag as `ref` to stay on a fixed state.
 
 ## Help wanted
 
-- **RM4 Pro owners**: does `Listening on 433.920 MHz` appear in the log? Which
-  UART pins worked? Do key fobs or socket remotes produce events? Photos of the
+- **RM4 Pro owners**: does `Listening on 433.920 MHz` appear in the log? Do key fobs or socket remotes produce events? Photos of the
   open case and the position of its screws would finish the opening guide.
 - **Other RM4 variants**: board marking, module, and whether it works.
 - **Logic analyzer or SDR owners**: a capture of the UART while the stock

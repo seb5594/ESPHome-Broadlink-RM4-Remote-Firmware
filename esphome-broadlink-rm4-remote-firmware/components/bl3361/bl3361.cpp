@@ -24,6 +24,7 @@ void BL3361Component::setup() {
     this->mark_failed();
     return;
   }
+  this->serial_.open();
   this->data_pin_->setup();
   this->isr_pin_ = this->data_pin_->to_isr();
   // Park the pin as an input. The edge interrupt is only attached once the
@@ -187,16 +188,25 @@ bool BL3361Component::transact_(uint16_t command, const uint8_t *payload, size_t
 
   // Forget whatever the module said before, such as late replies.
   uint8_t byte;
-  while (this->available() > 0 && this->read_byte(&byte)) {
+  while (this->serial_.available() > 0 && this->serial_.read_byte(&byte)) {
   }
   this->decoder_.reset();
 
-  this->write_array(frame, size);
-  this->flush();
+  ESP_LOGV(TAG, "TX 0x%03X: %s", (unsigned) command, format_hex_pretty(frame, size).c_str());
+  this->serial_.write_array(frame, size);
+  this->serial_.flush();
+
+  // What arrived, kept for the log if no valid reply follows.
+  uint8_t received[16];
+  size_t received_size = 0;
+  size_t received_total = 0;
 
   const uint32_t started = millis();
   while (millis() - started < REPLY_TIMEOUT_MS) {
-    while (this->available() > 0 && this->read_byte(&byte)) {
+    while (this->serial_.available() > 0 && this->serial_.read_byte(&byte)) {
+      if (received_size < sizeof(received))
+        received[received_size++] = byte;
+      received_total++;
       if (!this->decoder_.push(byte))
         continue;
       if (this->decoder_.command() != reply_id(command)) {
@@ -205,6 +215,8 @@ bool BL3361Component::transact_(uint16_t command, const uint8_t *payload, size_t
         this->decoder_.reset();
         continue;
       }
+      ESP_LOGV(TAG, "RX 0x%03X, %u payload bytes", (unsigned) this->decoder_.command(),
+               (unsigned) this->decoder_.payload_size());
       if (reply_size != nullptr && reply != nullptr) {
         *reply_size = this->decoder_.payload_size();
         std::copy_n(this->decoder_.payload(), *reply_size, reply);
@@ -214,8 +226,21 @@ bool BL3361Component::transact_(uint16_t command, const uint8_t *payload, size_t
     App.feed_wdt();
     delay(1);
   }
-  ESP_LOGW(TAG, "No reply to command 0x%03X within %u ms", (unsigned) command, (unsigned) REPLY_TIMEOUT_MS);
+  this->log_missing_reply_(command, received, received_size, received_total);
   return false;
+}
+
+void BL3361Component::log_missing_reply_(uint16_t command, const uint8_t *received, size_t received_size,
+                                         size_t received_total) {
+  if (received_total == 0) {
+    ESP_LOGW(TAG, "No reply to command 0x%03X within %u ms, nothing arrived on the UART", (unsigned) command,
+             (unsigned) REPLY_TIMEOUT_MS);
+    return;
+  }
+  // Bytes but no frame: wrong format or speed, or a line that picks up noise.
+  ESP_LOGW(TAG, "No valid reply to command 0x%03X within %u ms, %u bytes arrived on the UART: %s%s", (unsigned) command,
+           (unsigned) REPLY_TIMEOUT_MS, (unsigned) received_total, format_hex_pretty(received, received_size).c_str(),
+           received_total > received_size ? " ..." : "");
 }
 
 bool BL3361Component::configure_(Direction direction) {
