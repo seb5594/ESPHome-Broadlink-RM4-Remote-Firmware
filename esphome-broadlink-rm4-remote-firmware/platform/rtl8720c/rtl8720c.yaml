@@ -6,6 +6,12 @@
 # inside remote_transmitter, which is why earlier projects shipped a custom
 # ir_tx.h. That workaround is no longer needed.
 
+substitutions:
+  # Wi-Fi MAC address of the device as twelve hex digits (ec0bae9e21c1). Leave
+  # it empty if the router already shows an address of its own for the device;
+  # set it if it shows 00:e0:4c:b7:23:00, see docs/configuration.md.
+  mac_address: ""
+
 esphome:
   min_version: 2026.9.0
   # Lets interrupt-driven pins (the IR receiver) be read from the interrupt
@@ -14,6 +20,8 @@ esphome:
   # next to this file.
   build_flags:
     - -Wl,--wrap=digitalRead
+    # Read by LibreTiny at Wi-Fi start, an empty value changes nothing.
+    - -DLT_WIFI_STA_MAC=${mac_address}
   includes:
     - irq_read.c
 
@@ -21,7 +29,10 @@ rtl87xx:
   board: generic-rtl8720cf-2mb-992k
   family: rtl8720c
   framework:
-    version: latest
+    # LibreTiny with the MAC address fix (LT_WIFI_STA_MAC and the MAC stored in
+    # flash by the stock firmware). Back to a release once it contains the fix.
+    version: 1.14.0
+    source: https://github.com/seb5594/libretiny.git#feat/rtl87xx-real-mac
 
 logger:
   # INFO keeps the small CPU quiet. Use DEBUG together with `dump: raw` on a

@@ -277,6 +277,37 @@ package. The component has its own options (`filter`, `idle`, `min_pulses`,
 [433 MHz guide](433mhz.md). How the radio module works is written down in
 [RF module protocol](rf-protocol.md).
 
+## Same MAC address on several devices
+
+Some of the Wi-Fi modules (BL3357) have no MAC address stored in the chip. The
+driver then uses its built-in `00:e0:4c:b7:23:00` for every unit, and two
+devices on one network end up with the same MAC and the same IP address. Check
+the MAC of your device in the router or in the ESPHome log.
+
+Give such a device its real address, which is printed on its label and shown in
+the Broadlink app, with the substitution `mac_address` (twelve hex digits):
+
+```yaml
+substitutions:
+  mac_address: "ec0bae9e21c1"
+```
+
+The address is only held in RAM, nothing is written to the chip, and removing
+the line undoes it. The router sees the new address after the next reboot, so
+expect a new DHCP lease.
+
+The packages use a LibreTiny build that has this fix, see `framework` in
+`platform/rtl8720c/rtl8720c.yaml`. If the stock firmware is still on the
+device, you do not even need the line: LibreTiny reads the address from the
+sector the stock firmware keeps it in. Flashing a full image over the stock
+firmware erases that sector, so keep the backup of the stock firmware. The real
+address is in it, the six bytes at offset `0x4008` (the sector at `0x4000`
+starts with the text `CALD`).
+
+Do not set a MAC address through `on_boot` and `WiFi.setMacAddress()` or
+`wifi_set_mac_address()` in a lambda. In current LibreTiny releases those write
+the address permanently into the chip's eFuse, with the wrong format on top.
+
 ## Customizing
 
 Everything in the package can be changed from your own config:

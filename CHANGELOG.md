@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- The `mac_address` substitution. Some BL3357 modules have no MAC address in
+  the chip, so the Wi-Fi driver gives every one of them `00:e0:4c:b7:23:00` and
+  an RM4 Pro and an RM4C Mini on the same network ended up sharing MAC and IP
+  address. With the real address in `mac_address` each device uses its own, see
+  [the guide](docs/configuration.md#same-mac-address-on-several-devices).
+  Confirmed on an RM4 Pro and an RM4C Mini.
+
+### Changed
+
+- The packages build with a LibreTiny branch that fixes the MAC address
+  handling (`platform/rtl8720c/rtl8720c.yaml`) instead of the latest release.
+  This goes back to a release as soon as one contains the fix.
+
 ## 1.1.0 - 2026-10-23
 
 The repository grows from a single-device project into ESPHome Broadlink RM4,

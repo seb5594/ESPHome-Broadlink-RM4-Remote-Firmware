@@ -13,6 +13,9 @@ substitutions:
   friendly_name: Broadlink RM4 Pro
   # Raise to 80ms if long air conditioner codes arrive split up.
   # ir_receiver_idle: 25ms
+  # Only if the router shows 00:e0:4c:b7:23:00 for the device: its real MAC
+  # address from the label or the Broadlink app, twelve hex digits.
+  # mac_address: "aabbccddeeff"
 
   # The branch or tag of this repository that provides the firmware parts. The
   # radio component is loaded from it as well, so keep it in sync with `ref`.
