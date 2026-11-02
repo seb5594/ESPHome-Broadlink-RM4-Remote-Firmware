@@ -33,6 +33,11 @@ class FrequencySweep {
   static constexpr uint32_t TIMEOUT_MS = 30000;
   /// Channels read per call of step(), so the main loop is never held up long.
   static constexpr uint8_t CHANNELS_PER_STEP = 3;
+  /// A reading the module does not answer is skipped, the sweep goes on. It
+  /// only stops when this many in a row were lost: then the module is gone.
+  static constexpr uint8_t MAX_LOST_READINGS = 5;
+  /// How often the tuning of a window is tried before the sweep gives up.
+  static constexpr uint8_t MAX_TUNE_ATTEMPTS = 3;
 
   /// How far the strongest channel has to stand out of the average of all
   /// channels to count as a signal. The reading is coarse: the quiet band sits
@@ -43,6 +48,7 @@ class FrequencySweep {
     this->state_ = SweepState::COARSE;
     this->started_ms_ = now_ms;
     this->passes_ = 0;
+    this->failed_while_tuning_ = false;
     this->begin_pass_();
   }
   void cancel() { this->state_ = SweepState::IDLE; }
@@ -54,6 +60,11 @@ class FrequencySweep {
   SweepState state() const { return this->state_; }
   uint32_t result_khz() const { return this->result_khz_; }
   uint8_t result_rssi() const { return this->result_rssi_; }
+
+  /// What was going on when the state became FAILED, for the log.
+  bool failed_while_tuning() const { return this->failed_while_tuning_; }
+  const FrequencyPlan &plan() const { return this->plan_; }
+  uint8_t channel() const { return this->channel_; }
 
   /// Statistics of the last finished coarse pass, for the log.
   uint32_t passes() const { return this->passes_; }
@@ -71,8 +82,11 @@ class FrequencySweep {
     }
     if (!this->tuned_) {
       if (!radio.tune(this->plan_)) {
-        this->state_ = SweepState::FAILED;
-        return this->state_;
+        if (++this->tune_attempts_ >= MAX_TUNE_ATTEMPTS) {
+          this->failed_while_tuning_ = true;
+          this->state_ = SweepState::FAILED;
+        }
+        return this->state_;  // otherwise the next call tries again
       }
       this->tuned_ = true;
       return this->state_;
@@ -80,9 +94,14 @@ class FrequencySweep {
     for (uint8_t i = 0; i < CHANNELS_PER_STEP && this->channel_ < this->plan_.channels; i++, this->channel_++) {
       uint8_t rssi = 0;
       if (!radio.read_rssi(this->channel_, &rssi)) {
-        this->state_ = SweepState::FAILED;
-        return this->state_;
+        // One lost answer must not end the search. The channel stays unread.
+        if (++this->lost_readings_ >= MAX_LOST_READINGS) {
+          this->state_ = SweepState::FAILED;
+          return this->state_;
+        }
+        continue;
       }
+      this->lost_readings_ = 0;
       this->take_reading_(this->plan_.channel_khz(this->channel_), rssi);
     }
     if (this->channel_ >= this->plan_.channels)
@@ -102,6 +121,8 @@ class FrequencySweep {
   void begin_window_(const FrequencyPlan &plan) {
     this->plan_ = plan;
     this->tuned_ = false;
+    this->tune_attempts_ = 0;
+    this->lost_readings_ = 0;
     this->channel_ = 0;
     this->sum_ = 0;
     this->count_ = 0;
@@ -214,6 +235,9 @@ class FrequencySweep {
 
   FrequencyPlan plan_{};
   bool tuned_{false};
+  bool failed_while_tuning_{false};
+  uint8_t tune_attempts_{0};
+  uint8_t lost_readings_{0};
   uint8_t channel_{0};
   uint8_t segment_{0};
   uint8_t margin_{3};

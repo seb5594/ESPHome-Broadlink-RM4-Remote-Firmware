@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.2.2 - 2026-11-02
+
+### Fixed
+
+- The frequency search no longer ends because the module missed one answer. A
+  reading that gets no answer is skipped, the tuning of a window is tried three
+  times, and only five lost readings in a row end the search. The log now says
+  where it stopped.
+- A module that was left in the middle of a frame (a reset of the chip while it
+  was writing to the UART) answered every later request with a broken frame. A
+  request without an answer is now repeated once after the component has filled
+  up such a frame, which lets the module find the start of the next one again.
+  If it does not help, unplug the device for ten seconds: that resets the module.
+
+### Added
+
+- The log shows what reset the chip at start (`The chip was last reset by: ...`),
+  to tell a crash from a watchdog or a power loss.
+- [A car key as a lock](docs/rf-home-assistant.md#a-car-key-as-a-lock): a `lock`
+  entity with lock, unlock and trunk (`open`) for a remote with a fixed code.
+
 ## 1.2.1 - 2026-11-02
 
 ### Fixed

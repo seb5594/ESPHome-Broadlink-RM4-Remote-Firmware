@@ -12,6 +12,10 @@
 #include "frequency_number.h"
 #include "frequency_select.h"
 
+#ifdef USE_LIBRETINY
+#include <libretiny.h>
+#endif
+
 namespace esphome::bl3361 {
 
 static const char *const TAG = "bl3361";
@@ -21,6 +25,10 @@ static const char *const TAG = "bl3361";
 // ---------------------------------------------------------------------------
 
 void BL3361Component::setup() {
+#ifdef USE_LIBRETINY
+  // A reset in the middle of a search or a transmission leaves its trace here.
+  ESP_LOGI(TAG, "The chip was last reset by: %s", lt_get_reboot_reason_name(lt_get_reboot_reason()));
+#endif
   if (this->has_frequency_entity_() && this->restore_frequency_) {
     this->frequency_pref_ = global_preferences->make_preference<uint32_t>(fnv1_hash("bl3361_frequency"));
     uint32_t saved_khz = 0;
@@ -267,6 +275,8 @@ bool BL3361Component::find_frequency(bool apply) {
   this->data_pin_->detach_interrupt();
   this->data_pin_->pin_mode(gpio::FLAG_INPUT);
   this->mode_ = Mode::UNKNOWN;
+  this->edges_.clear();
+  this->framer_.reset();
   this->task_ = Task::FIND;
   this->sweep_apply_ = apply;
   this->last_sweep_log_passes_ = 0;
@@ -344,7 +354,12 @@ void BL3361Component::finish_sweep_(uint32_t now) {
       this->fire_learn_("timeout", this->plan_.frequency_khz(), 0, {});
       break;
     default:
-      ESP_LOGW(TAG, "The frequency search stopped, the module did not answer");
+      if (this->sweep_.failed_while_tuning())
+        ESP_LOGW(TAG, "The frequency search stopped: the module did not take the tuning for %.3f MHz and up",
+                 this->sweep_.plan().base_khz / 1e3f);
+      else
+        ESP_LOGW(TAG, "The frequency search stopped: the module stopped answering at %.3f MHz",
+                 this->sweep_.plan().channel_khz(this->sweep_.channel()) / 1e3f);
       this->fire_learn_("failed", this->plan_.frequency_khz(), 0, {});
       break;
   }
@@ -392,7 +407,7 @@ bool BL3361Component::sweep_tune_(const FrequencyPlan &plan) {
 
 bool BL3361Component::sweep_read_(uint8_t channel, uint8_t *rssi) {
   const uint8_t request[2] = {channel, DIRECTION_RX};
-  if (!this->transact_(COMMAND_SET_CHANNEL, request, sizeof(request)))
+  if (!this->transact_again_(COMMAND_SET_CHANNEL, request, sizeof(request)))
     return false;
   delay(3);
   // The reading jitters, the higher of two samples is more telling.
@@ -488,8 +503,32 @@ bool BL3361Component::configure_(const FrequencyPlan &plan, Direction direction)
   // load the tuning, switch the direction, pick the channel.
   const uint16_t switch_command = direction == DIRECTION_RX ? COMMAND_ENTER_RX : COMMAND_ENTER_TX;
   const uint8_t channel[2] = {plan.channel, direction};
-  return this->transact_(COMMAND_CONFIGURE, blob, blob_size) && this->transact_(switch_command, nullptr, 0) &&
-         this->transact_(COMMAND_SET_CHANNEL, channel, sizeof(channel));
+  return this->transact_again_(COMMAND_CONFIGURE, blob, blob_size) &&
+         this->transact_again_(switch_command, nullptr, 0) &&
+         this->transact_again_(COMMAND_SET_CHANNEL, channel, sizeof(channel));
+}
+
+bool BL3361Component::transact_again_(uint16_t command, const uint8_t *payload, size_t payload_size) {
+  if (this->transact_(command, payload, payload_size))
+    return true;
+  this->resync_();
+  return this->transact_(command, payload, payload_size);
+}
+
+void BL3361Component::resync_() {
+  ESP_LOGW(TAG, "Trying to bring the module back into step with it");
+  // A frame the module has only half received makes it wait for the rest, and
+  // it takes our next requests for that rest. Filling the longest frame up with
+  // zeros lets it end the broken frame (the checksum does not match, so it is
+  // dropped) and look for the next magic number again.
+  uint8_t filler[FRAME_MAX_SIZE] = {};
+  this->serial_.write_array(filler, sizeof(filler));
+  this->serial_.flush();
+  delay(30);
+  uint8_t byte;
+  while (this->serial_.available() > 0 && this->serial_.read_byte(&byte)) {
+  }
+  this->decoder_.reset();
 }
 
 bool BL3361Component::read_rssi_(uint8_t *rssi) {

@@ -13,6 +13,7 @@ transmitting see the [433 MHz guide](433mhz.md).
 - [Choosing the frequency, and your own](#choosing-the-frequency-and-your-own)
 - [Learning a remote](#learning-a-remote)
 - [Using a learned code](#using-a-learned-code)
+- [A car key as a lock](#a-car-key-as-a-lock)
 - [Sending through Home Assistant's radio frequency platform](#sending-through-home-assistants-radio-frequency-platform)
 - [Receiving](#receiving)
 - [A dashboard for it](#a-dashboard-for-it)
@@ -233,6 +234,51 @@ works whatever the radio listens on. `rf_send_raw` sends on the current frequenc
 
 Sending is not confirmed on a device yet; please try it with something harmless
 first and report what you see, see [the rules for transmitting](433mhz.md#rules-for-transmitting).
+
+## A car key as a lock
+
+A remote with a lock, an unlock and a trunk key is best as one **lock** entity
+plus a **button**. The device itself offers them, so they keep working when Home
+Assistant is down and need no template in Home Assistant. Learn each key once
+(see [Learning a remote](#learning-a-remote)), then put the codes into your
+device config, below the `packages:` section:
+
+```yaml
+lock:
+  - platform: template
+    name: Car
+    # The key gives no feedback, so the lock shows what was sent last.
+    optimistic: true
+    assumed_state: true
+    lock_action:
+      - bl3361.send_raw:
+          frequency: 433.92MHz
+          repeat: 8
+          code: [350, -1050, 1050, -350, 350, -1050, 350, -10850]
+    unlock_action:
+      - bl3361.send_raw:
+          frequency: 433.92MHz
+          repeat: 8
+          code: [350, -1050, 350, -1050, 350, -1050, 350, -10850]
+    # Shows up as "Open" on the lock in Home Assistant. Many cars open the
+    # trunk with its own key, which is what this is for.
+    open_action:
+      - bl3361.send_raw:
+          frequency: 433.92MHz
+          repeat: 8
+          code: [350, -1050, 1050, -1050, 350, -1050, 350, -10850]
+```
+
+Use the frequency `rf_learn` reported for your key (for a key that was found on
+434.3 MHz, `frequency: 434.3MHz`); every code is sent on its own frequency, no
+matter what the radio is tuned to. If you prefer a plain button for the trunk,
+add a `button: - platform: template` with `on_press:` and the same
+`bl3361.send_raw` action instead of `open_action`.
+
+Only keys with a **fixed code** work this way. A key that changes its code with
+every press (rolling code, as most newer cars have) is not replayable: the car
+ignores a code it has already heard. If the learned code differs every time you
+press the same key, this is the reason.
 
 ## Sending through Home Assistant's radio frequency platform
 

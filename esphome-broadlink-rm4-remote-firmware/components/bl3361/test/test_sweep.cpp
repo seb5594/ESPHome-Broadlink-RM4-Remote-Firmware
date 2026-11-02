@@ -33,7 +33,7 @@ struct FakeRadio {
 
   bool tune(const FrequencyPlan &p) {
     tunings++;
-    if (fail_tune)
+    if (fail_tune || tunings <= failing_tunings)
       return false;
     plan = p;
     return true;
@@ -41,6 +41,8 @@ struct FakeRadio {
 
   bool read_rssi(uint8_t channel, uint8_t *rssi) {
     reads++;
+    if (lose_all_reads || (lose_every != 0 && reads % lose_every == 0))
+      return false;
     seed = seed * 1103515245u + 12345u;
     const int noise = static_cast<int>((seed >> 16) % 3) - 1;  // quiet band: 20 to 22
     const double centre = plan.channel_khz(channel);
@@ -52,6 +54,9 @@ struct FakeRadio {
   double signal_khz;
   FrequencyPlan plan{};
   bool fail_tune{false};
+  int failing_tunings{0};   // the first tunings are not answered
+  int lose_every{0};        // every n-th reading is not answered
+  bool lose_all_reads{false};
   uint32_t seed{1};
   int tunings{0};
   int reads{0};
@@ -136,6 +141,38 @@ static void test_sweep_reports_a_broken_module() {
   radio.fail_tune = true;
   FrequencySweep sweep;
   CHECK(run(sweep, radio) == SweepState::FAILED);
+}
+
+static void test_sweep_survives_lost_answers() {
+  // A module that now and then misses a request is still searched through.
+  FakeRadio flaky(433920);
+  flaky.lose_every = 7;
+  FrequencySweep sweep;
+  CHECK(run(sweep, flaky) == SweepState::FOUND);
+  CHECK(std::fabs(static_cast<double>(sweep.result_khz()) - 433920.0) <= 10);
+
+  // The first tuning of a window may fail as well.
+  FakeRadio slow_start(315000);
+  slow_start.failing_tunings = FrequencySweep::MAX_TUNE_ATTEMPTS - 1;
+  FrequencySweep second;
+  CHECK(run(second, slow_start) == SweepState::FOUND);
+
+  // One more and it is a failure, and the log can tell where.
+  FakeRadio gone(433920);
+  gone.failing_tunings = FrequencySweep::MAX_TUNE_ATTEMPTS;
+  FrequencySweep third;
+  CHECK(run(third, gone) == SweepState::FAILED);
+  CHECK(third.failed_while_tuning());
+}
+
+static void test_sweep_gives_up_on_a_silent_module() {
+  FakeRadio radio(433920);
+  radio.lose_all_reads = true;
+  FrequencySweep sweep;
+  CHECK(run(sweep, radio) == SweepState::FAILED);
+  CHECK(!sweep.failed_while_tuning());
+  // It stopped after a few lost readings, not after a whole band of them.
+  CHECK(radio.reads <= FrequencySweep::MAX_LOST_READINGS + FrequencySweep::CHANNELS_PER_STEP);
 }
 
 static void test_sweep_does_not_block_the_loop() {
@@ -336,6 +373,8 @@ int main() {
   test_sweep_stays_inside_the_tuning_tables();
   test_sweep_without_a_signal_gives_up();
   test_sweep_reports_a_broken_module();
+  test_sweep_survives_lost_answers();
+  test_sweep_gives_up_on_a_silent_module();
   test_sweep_does_not_block_the_loop();
   test_frame_matching();
   test_collector();
