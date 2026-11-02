@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.2.3 - 2026-11-02
+
+### Fixed
+
+- A module whose replies come without their last bytes (`No valid reply to
+  command 0x600 ... 11 bytes arrived`, seen after a frequency search on a
+  device) is understood again: a reply without payload counts as complete once
+  its length field has arrived. Receiving and sending work in that state. The
+  signal strength cannot be read then, because its value is the last byte. This
+  state comes from the module and stays until the power of the device is cut
+  for a few seconds.
+- A lost signal strength reading no longer holds the main loop for 300 ms every
+  second. After a lost reading the sensor waits 30 s before it asks again.
+
 ## 1.2.2 - 2026-11-02
 
 ### Fixed

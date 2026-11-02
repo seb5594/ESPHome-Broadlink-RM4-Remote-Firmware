@@ -89,6 +89,36 @@ static void test_decoder() {
   CHECK(done);
 }
 
+static void test_decoder_accepts_cut_replies() {
+  // The reply of a module that lost the end of its frames and put a stray zero in front.
+  const uint8_t cut_reply[] = {0x00, 0xA5, 0xA5, 0x5A, 0x5A, 0xB4, 0xC0, 0x01, 0x06, 0x00, 0x00};
+  FrameDecoder decoder;
+  bool done = false;
+  for (uint8_t byte : cut_reply)
+    done = decoder.push(byte);
+  CHECK(done);
+  CHECK(decoder.command() == reply_id(COMMAND_CONFIGURE));
+  CHECK(decoder.payload_size() == 0);
+
+  // A reply with a payload has to be complete, the payload is what it is about.
+  uint8_t frame[FRAME_MAX_SIZE];
+  const uint8_t payload[] = {0x42};
+  const size_t size = encode_frame(reply_id(COMMAND_GET_RSSI), payload, 1, frame, sizeof(frame));
+  decoder.reset();
+  done = false;
+  for (size_t i = 0; i + 1 < size; i++)
+    done = decoder.push(frame[i]) || done;
+  CHECK(!done);
+
+  // Damage in a reply without payload is still caught.
+  decoder.reset();
+  uint8_t bad[] = {0xA5, 0xA5, 0x5A, 0x5A, 0xB5, 0xC0, 0x01, 0x06, 0x00, 0x00};
+  done = false;
+  for (uint8_t byte : bad)
+    done = decoder.push(byte) || done;
+  CHECK(!done);
+}
+
 static void check_config(uint32_t frequency_khz, uint32_t base, uint32_t step, uint8_t channel, const char *expected_hex) {
   FrequencyPlan plan{};
   CHECK(plan_frequency(frequency_khz, &plan));
@@ -237,6 +267,7 @@ static void test_framer() {
 int main() {
   test_frames();
   test_decoder();
+  test_decoder_accepts_cut_replies();
   test_config();
   test_unsupported_frequencies();
   test_every_supported_frequency_has_a_config();

@@ -62,6 +62,18 @@ A line `uart is marked FAILED: SoftwareSerial is not implemented for this chip`
 comes from an older version of `rf.yaml` that still declared a `uart:` section.
 Update the package and remove that section from your own config.
 
+**The module answers, but the log says `No valid reply ... N bytes arrived`**
+with a frame such as `A5.A5.5A.5A.B4.C0.01.06.00.00` that is one or two bytes
+short, sometimes with a `00` in front. The module has lost track of its own
+frames, mostly after a frequency search was interrupted or the chip reset in the
+middle of a request. From release 1.2.3 on this no longer stops the radio, but
+the signal strength and with it `rf_learn` and `rf_find_frequency` do not work
+in this state. Unplug the device for ten seconds, a restart of the chip does not
+reset the module. If it comes back, open an
+[issue](https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware/issues)
+with the log from the start of the search to the first warning, and set `level:
+VERBOSE` in `logger` to see every frame.
+
 **`rf_learn` or `rf_find_frequency` finds no transmitter**
 Hold the key of the remote about 10 cm from the device for the whole sweep,
 which takes a few seconds per pass. Check the log (`level: DEBUG`): every pass

@@ -106,11 +106,15 @@ void BL3361Component::loop() {
   }
 
 #ifdef USE_SENSOR
-  if (this->rssi_sensor_ != nullptr && now - this->last_rssi_ms_ >= this->rssi_interval_ms_) {
+  if (this->rssi_sensor_ != nullptr && now - this->last_rssi_ms_ >= this->rssi_wait_ms_) {
     this->last_rssi_ms_ = now;
     uint8_t rssi = 0;
-    if (this->read_rssi_(&rssi))
+    if (this->read_rssi_(&rssi)) {
+      this->rssi_wait_ms_ = this->rssi_interval_ms_;
       this->rssi_sensor_->publish_state(rssi);
+    } else {
+      this->rssi_wait_ms_ = RSSI_BACKOFF_MS;
+    }
   }
 #endif
 }

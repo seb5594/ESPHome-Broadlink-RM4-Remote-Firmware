@@ -84,7 +84,10 @@ class BL3361Component : public Component {
   }
 #ifdef USE_SENSOR
   void set_rssi_sensor(sensor::Sensor *sensor) { this->rssi_sensor_ = sensor; }
-  void set_rssi_interval(uint32_t interval_ms) { this->rssi_interval_ms_ = interval_ms; }
+  void set_rssi_interval(uint32_t interval_ms) {
+    this->rssi_interval_ms_ = interval_ms;
+    this->rssi_wait_ms_ = interval_ms;
+  }
 #endif
   Trigger<std::vector<int32_t>> *get_receive_trigger() { return &this->receive_trigger_; }
   /// Fires while a frequency search or a learning session progresses: the
@@ -127,6 +130,8 @@ class BL3361Component : public Component {
   static constexpr uint32_t MAX_SEND_REPEAT = 30;
   static constexpr uint32_t REPLY_TIMEOUT_MS = 300;
   static constexpr uint32_t RETRY_INTERVAL_MS = 10000;
+  /// A lost signal strength reading holds the loop for REPLY_TIMEOUT_MS, so it is not asked for again right away.
+  static constexpr uint32_t RSSI_BACKOFF_MS = 30000;
   static constexpr uint32_t MODE_SETTLE_MS = 10;
   /// How long learning waits for a signal that repeats.
   static constexpr uint32_t LEARN_CAPTURE_TIMEOUT_MS = 20000;
@@ -211,6 +216,8 @@ class BL3361Component : public Component {
 #ifdef USE_SENSOR
   sensor::Sensor *rssi_sensor_{nullptr};
   uint32_t rssi_interval_ms_{1000};
+  /// The pause before the next reading: the interval, or longer after a reading was lost.
+  uint32_t rssi_wait_ms_{1000};
   uint32_t last_rssi_ms_{0};
 #endif
 };

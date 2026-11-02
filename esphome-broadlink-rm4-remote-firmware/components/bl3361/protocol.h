@@ -109,7 +109,8 @@ inline size_t encode_frame(uint16_t command, const uint8_t *payload, size_t payl
 ///
 /// It resynchronises on the magic number, so stray bytes in front of a frame
 /// (for example a boot message of the module) are skipped. A frame with a
-/// wrong checksum is dropped and counted.
+/// wrong checksum is dropped and counted. A reply without payload counts as
+/// complete without its two reserved bytes at the end.
 class FrameDecoder {
  public:
   /// Returns true once a valid frame is complete. Call reset() before the next one.
@@ -132,6 +133,19 @@ class FrameDecoder {
       return false;
     }
     this->buffer_[this->size_++] = byte;
+    // A reply without payload is complete once its length field is in: the
+    // reserved field behind it is always zero and adds nothing to the checksum.
+    // A module that cuts the end of its replies off (seen on a device, it
+    // persists until the power is cut) is understood this way. If the two bytes
+    // do follow, the next request throws them away together with any other leftover.
+    if (this->size_ == FRAME_HEADER_SIZE - 2 && get_u16(this->buffer_ + 8) == 0) {
+      this->buffer_[10] = 0;
+      this->buffer_[11] = 0;
+      if (this->checksum_matches_()) {
+        this->complete_ = true;
+        return true;
+      }
+    }
     if (this->size_ < FRAME_HEADER_SIZE)
       return false;
     const size_t payload_size = get_u16(this->buffer_ + 8);
