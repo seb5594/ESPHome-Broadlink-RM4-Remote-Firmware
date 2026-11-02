@@ -39,6 +39,10 @@ substitutions:
   # package reference of rm4-pro.example.yaml.
   firmware_url: https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware
   firmware_ref: main
+  # How long ESPHome keeps its copy of the component before it asks GitHub again.
+  # Set it to `always` after an update if the dashboard still reports a platform
+  # of the radio as not found: the copy it kept is from an older release.
+  firmware_refresh: 1d
 
   # Carrier frequency. 433.92 MHz is the usual one in Europe. The module tunes
   # to 305-340 MHz and 430-440 MHz.
@@ -54,7 +58,7 @@ external_components:
       ref: ${firmware_ref}
       path: esphome-broadlink-rm4-remote-firmware/components
     components: [bl3361]
-    refresh: 1d
+    refresh: ${firmware_refresh}
 
 bl3361:
   id: rf

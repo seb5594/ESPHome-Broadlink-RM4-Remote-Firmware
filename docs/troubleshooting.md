@@ -33,6 +33,20 @@ address of their own and the driver gives every unit the same one. Add the
 real address of each device, see
 [Same MAC address on several devices](configuration.md#same-mac-address-on-several-devices).
 
+**`Platform not found: 'radio_frequency.bl3361'` (RM4 Pro)**
+ESPHome still has the radio component of an older release in its cache and
+keeps it for a day (`refresh: 1d`), also when the package itself is refreshed on
+every build. Add this to the `substitutions:` of your config, build once and
+remove it again if you like:
+
+```yaml
+substitutions:
+  firmware_refresh: always
+```
+
+Alternatively delete the folder `.esphome/external_components` in your ESPHome
+config directory.
+
 **The 433 MHz radio does not answer (RM4 Pro)**
 The log says `No reply to command 0x60E` or `The RF module does not answer on
 the UART`. The line before or after tells which case it is:

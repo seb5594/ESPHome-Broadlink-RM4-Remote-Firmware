@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.1 - 2026-11-02
+
+### Fixed
+
+- The dashboard reported `Platform not found: 'radio_frequency.bl3361'` after
+  updating from 1.1.0 or an earlier 1.2.0 build. ESPHome keeps its copy of the
+  radio component for `refresh: 1d`, and a package that is refreshed on every
+  build did not reach that copy. The interval is now the substitution
+  `firmware_refresh`; set it to `always` once to fetch the current component, see
+  [Troubleshooting](docs/troubleshooting.md).
+
 ## 1.2.0 - 2026-11-02
 
 The 433 MHz radio of the RM4 Pro works with a device for the first time: the
