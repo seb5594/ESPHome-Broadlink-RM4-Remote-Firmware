@@ -68,7 +68,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ~/.platformio
-          key: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-${{ hashFiles('esphome-broadlink-rm4-remote-firmware/platform/**', 'esphome-broadlink-rm4-remote-firmware/common/**', 'esphome-broadlink-rm4-remote-firmware/features/**', 'esphome-broadlink-rm4-remote-firmware/devices/**/*.yaml') }}
+          key: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-${{ hashFiles('esphome-broadlink-rm4-remote-firmware/common/**', 'esphome-broadlink-rm4-remote-firmware/features/**', 'esphome-broadlink-rm4-remote-firmware/devices/**/*.yaml') }}
           restore-keys: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-
       - name: Install ESPHome ${{ matrix.esphome }}
         run: |
@@ -88,8 +88,8 @@ jobs:
         run: bash .github/tests/check_receiver_fix.sh .github/tests/.esphome/build
 
   # Checks that every device file resolves when it is pulled in as a remote
-  # package at this very commit, which is how users include it, the paths of the
-  # earlier releases among them. The RM4 Pro is compiled as well: that exercises
+  # package at this very commit, which is how users include it, the old root
+  # file of release 1.0.0 among them. The RM4 Pro is compiled as well: that exercises
   # the include paths and the component download the way they work outside of a
   # clone.
   remote-package:
@@ -110,21 +110,9 @@ jobs:
             files: esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml
             compile: false
             rf: none
-          # Configs written for release 1.2.0 use this file for the same.
-          - device: rm4-pro-ir
-            files: esphome-broadlink-rm4-remote-firmware/devices/rm4/pro-ir.yaml
-            compile: false
           # Configs written for release 1.0.0 include this file.
           - device: rm4-mini-v1-shim
             files: broadlink-rm4-mini.yaml
-            compile: false
-          # Configs written for release 1.1.0 use these paths; the radio file of
-          # the old folder is still listed next to the device file there.
-          - device: rm4-mini-old-path
-            files: esphome-broadlink-rm4-remote-firmware/devices/rm4-mini/rm4-mini.yaml
-            compile: false
-          - device: rm4-pro-old-path
-            files: "esphome-broadlink-rm4-remote-firmware/devices/rm4-pro/rm4-pro.yaml, esphome-broadlink-rm4-remote-firmware/devices/rm4-pro/rf.yaml"
             compile: false
     steps:
       - uses: actions/checkout@v7
@@ -141,7 +129,7 @@ jobs:
               -e "s|__REF__|$FIRMWARE_REF|g" \
               -e "s|__DEVICE__|${{ matrix.device }}|g" \
               -e "s|__FILES__|${{ matrix.files }}|g" \
-              -e "s|# __RF_LINE__|${{ matrix.rf && format('rf_driver: {0}', matrix.rf) || '' }}|g" \
+              -e "s|# __RF_LINE__|${{ matrix.rf && format('feature_rf: {0}', matrix.rf) || '' }}|g" \
               .github/tests/ci-remote.yaml > .github/tests/ci-remote-rendered.yaml
       - name: Validate config
         run: bash .github/tests/run_logged.sh esphome config .github/tests/ci-remote-rendered.yaml

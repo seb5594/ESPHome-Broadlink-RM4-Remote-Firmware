@@ -16,11 +16,12 @@ parts fit together and what to do for a new model.
 esphome-broadlink-rm4-remote-firmware/
   devices/rm4/mini.yaml       a model: identity, pin map, list of features
   devices/rm4/pro.yaml
-  features/ir/ir.yaml         a feature: one function, with the YAML it needs
-  features/rf/bl3361.yaml
-  features/controls/controls.yaml
+  features/ir.yaml            a feature: one function, with the YAML it needs
+  features/rf.yaml
+  features/controls.yaml
+  features/none.yaml          stands in for a feature that is switched off
   common/base.yaml            what every device has: API, OTA, hotspot
-  platform/rtl8720c/          what every device with this chip has
+  common/rtl8720c.yaml        what every device with this chip has
   components/bl3361/          code that ESPHome does not bring (the radio)
 ```
 
@@ -36,9 +37,9 @@ Every feature file names the substitutions it expects in its first lines.
 
 | Feature | Substitutions | Notes |
 |---|---|---|
-| `ir/ir.yaml` | `pin_ir_tx`, `pin_ir_rx` | `ir_receiver_idle` is optional (25 ms). |
-| `controls/controls.yaml` | `pin_status_led`, `pin_button` | LED and button are active low. |
-| `rf/bl3361.yaml` | `pin_rf_data`, `name` | Needs the BL3361 module; the UART to it is fixed. |
+| `ir.yaml` | `pin_ir_tx`, `pin_ir_rx` | `ir_receiver_idle` is optional (25 ms). |
+| `controls.yaml` | `pin_status_led`, `pin_button` | LED and button are active low. |
+| `rf.yaml` | `pin_rf_data`, `name` | Needs the BL3361 module; the UART to it is fixed. |
 
 A pin that a feature needs and the model leaves out shows up as a warning that
 `${pin_ir_tx}` could not be resolved because `pin_ir_tx` is undefined, followed by
@@ -55,8 +56,8 @@ the failed validation; the message names the pin and the feature file.
    [`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml) does.
 4. **List the features** the model has under `packages:`. A model without an
    infrared receiver leaves out `ir`, a model without a button leaves out
-   `controls`, and so on. If the chip is another one, the `platform` line points
-   at that chip's folder (see below).
+   `controls`, and so on. If the chip is another one, the line with
+   `rtl8720c.yaml` points at the file of that chip (see below).
 5. **Add an example config** like [`rm4-mini.example.yaml`](../rm4-mini.example.yaml)
    for the users, with the path of the new model file.
 6. **Add it to the CI**: a config `.github/tests/ci-<model>.yaml` like
@@ -73,26 +74,26 @@ does it for the radio:
 
 ```yaml
 substitutions:
-  rf_driver: bl3361
+  feature_rf: rf
 
 packages:
-  rf: !include ../../features/rf/${rf_driver}.yaml
+  rf: !include ../../features/${feature_rf}.yaml
 ```
 
-`rf_driver: none` in the user's config includes
-[`features/rf/none.yaml`](../esphome-broadlink-rm4-remote-firmware/features/rf/none.yaml),
-which is empty. Constraints that only the feature has, such as the ESPHome
+`feature_rf: none` in the user's config includes
+[`features/none.yaml`](../esphome-broadlink-rm4-remote-firmware/features/none.yaml),
+which is empty and serves every optional feature. Constraints that only the feature has, such as the ESPHome
 version of the radio, live in the feature file, so leaving it out leaves them out.
 
 ## A new feature or another chip
 
-- **A new feature** is a folder in `features/` with one YAML file. Write the
+- **A new feature** is one YAML file in `features/`, named after the function. Write the
   substitutions it expects at the top, give everything that is not a pin a default
   under `substitutions:`, and keep model knowledge out of it. If it needs code
   ESPHome does not have, put an external component in `components/`, with host
   tests like the ones of `bl3361` for the parts that do not need the hardware.
-- **Another chip** gets its own folder next to
-  [`platform/rtl8720c/`](../esphome-broadlink-rm4-remote-firmware/platform/rtl8720c/)
-  with the board, the framework and the logger settings; the model includes that
-  instead. The features stay as they are as long as ESPHome offers the same
+- **Another chip** gets its own file next to
+  [`common/rtl8720c.yaml`](../esphome-broadlink-rm4-remote-firmware/common/rtl8720c.yaml)
+  with the board, the framework and the logger settings (and the files it
+  includes, as `irq_read.c` of the RTL8720C); the model includes that instead. The features stay as they are as long as ESPHome offers the same
   platforms on that chip.

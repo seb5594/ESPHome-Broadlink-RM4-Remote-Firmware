@@ -12,7 +12,7 @@
 # overridden there.
 #
 # The radio is optional. For an RM4 Pro that should stay infrared only, or runs
-# an ESPHome older than 2026.10, set `rf_driver: none` in your config.
+# an ESPHome older than 2026.10, set `feature_rf: none` in your config.
 #
 # Pin map. It was first published by phdindota
 # (https://github.com/phdindota/broadlink-rm4pro-esphome) and is confirmed here
@@ -49,10 +49,10 @@ substitutions:
   name: broadlink-rm4-pro
   friendly_name: Broadlink RM4 Pro
 
-  # Which radio driver the model brings along: `bl3361` for the module of the
-  # RM4 Pro, `none` for an infrared-only device. Names a file in
-  # ../../features/rf/.
-  rf_driver: bl3361
+  # Whether the model brings the radio along: `rf` includes features/rf.yaml,
+  # `none` includes features/none.yaml, which is empty, for an infrared-only
+  # device.
+  feature_rf: rf
 
   # Pin map, see the note above. The features get their pins from these
   # substitutions.
@@ -63,11 +63,11 @@ substitutions:
   pin_rf_data: PA20
 
 packages:
-  rtl8720c: !include ../../platform/rtl8720c/rtl8720c.yaml
+  rtl8720c: !include ../../common/rtl8720c.yaml
   base: !include ../../common/base.yaml
-  controls: !include ../../features/controls/controls.yaml
-  ir: !include ../../features/ir/ir.yaml
-  rf: !include ../../features/rf/${rf_driver}.yaml
+  controls: !include ../../features/controls.yaml
+  ir: !include ../../features/ir.yaml
+  rf: !include ../../features/${feature_rf}.yaml
 
 esphome:
   name: ${name}

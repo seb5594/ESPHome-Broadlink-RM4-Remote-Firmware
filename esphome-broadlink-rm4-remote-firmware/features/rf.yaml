@@ -5,7 +5,7 @@
 # The device file includes this file, so there is nothing to add to your own
 # config. It needs ESPHome 2026.10 or newer (the native radio_frequency entity
 # below). A device file that offers the radio as an option leaves it out with
-# `rf_driver: none`, see rf/none.yaml.
+# `feature_rf: none`, see none.yaml.
 #
 # The device file hands over the pin as a substitution:
 #   pin_rf_data   raw data pin of the radio (PA20 on the RM4 Pro)

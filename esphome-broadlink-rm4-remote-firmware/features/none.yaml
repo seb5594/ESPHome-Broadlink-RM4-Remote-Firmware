@@ -1,0 +1,6 @@
+# Feature: nothing.
+#
+# What a device file includes in place of an optional feature that is switched
+# off, for example `feature_rf: none` on an RM4 Pro that should stay infrared
+# only or runs an ESPHome older than 2026.10. It adds nothing.
+{}

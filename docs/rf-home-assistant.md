@@ -31,7 +31,7 @@ transmitting see the [433 MHz guide](433mhz.md).
 - A remote or a device on 433 MHz to try it with, see
   [Testing without owning a 433 MHz device](433mhz.md#testing-without-owning-a-433-mhz-device).
 
-An RM4 Pro that should stay infrared only sets `rf_driver: none` in the
+An RM4 Pro that should stay infrared only sets `feature_rf: none` in the
 `substitutions:` of its config and has none of the following.
 
 ## What the device brings
@@ -406,4 +406,4 @@ packet and cannot be imported; learn them again.
 - **The choice does not follow `rf_frequency`**: the last choice wins over the
   config after the first start; pick the frequency in Home Assistant.
 - **The ESPHome build says it needs 2026.10**: the radio needs it, or use
-  `rf_driver: none`.
+  `feature_rf: none`.

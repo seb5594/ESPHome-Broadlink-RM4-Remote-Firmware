@@ -99,7 +99,7 @@ without owning a 433 MHz device, and [RF module protocol](../rf-protocol.md)
 for how the radio module works and what is still open.
 
 In short: the radio feature
-[`bl3361.yaml`](../../esphome-broadlink-rm4-remote-firmware/features/rf/bl3361.yaml),
+[`bl3361.yaml`](../../esphome-broadlink-rm4-remote-firmware/features/rf.yaml),
 which `pro.yaml` includes, talks to the radio over UART0, switches it between
 receive and transmit and passes the raw signal through `PA20`. A received code
 arrives as a Home Assistant event with its pulse timings; `rf_send_raw` sends

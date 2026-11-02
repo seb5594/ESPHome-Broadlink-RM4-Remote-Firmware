@@ -22,10 +22,10 @@ substitutions:
   pin_button: PA19
 
 packages:
-  rtl8720c: !include ../../platform/rtl8720c/rtl8720c.yaml
+  rtl8720c: !include ../../common/rtl8720c.yaml
   base: !include ../../common/base.yaml
-  controls: !include ../../features/controls/controls.yaml
-  ir: !include ../../features/ir/ir.yaml
+  controls: !include ../../features/controls.yaml
+  ir: !include ../../features/ir.yaml
 
 esphome:
   name: ${name}

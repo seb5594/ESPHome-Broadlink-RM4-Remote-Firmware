@@ -14,25 +14,33 @@
   repeat and not reported; `repeat_timeout: 0ms` reports every transmission.
   The event keeps its data. Learning is not affected.
 - **Modular layout**: one file per Broadlink model in `devices/rm4/`, and the
-  functions as features in their own folders, each with the pins it expects as
-  substitutions:
-  - `features/ir/ir.yaml` (was `common/ir-proxy.yaml`): `pin_ir_tx`, `pin_ir_rx`
-  - `features/controls/controls.yaml` (was `common/controls.yaml`):
-    `pin_status_led`, `pin_button`
-  - `features/rf/bl3361.yaml` (was `devices/rm4/rf.yaml`): `pin_rf_data`
-  - `common/base.yaml` and `platform/rtl8720c/` stay.
+  functions as features, one file each, which get their pins as substitutions
+  from the model:
+  - `features/ir.yaml` (was `common/ir-proxy.yaml`): `pin_ir_tx`, `pin_ir_rx`
+  - `features/controls.yaml` (was `common/controls.yaml`): `pin_status_led`,
+    `pin_button`
+  - `features/rf.yaml` (was `devices/rm4/rf.yaml`): `pin_rf_data`
+  - `features/none.yaml` stands in for an optional feature that is switched off
+  - `common/rtl8720c.yaml` and `common/irq_read.c` (were in
+    `platform/rtl8720c/`) next to `common/base.yaml`
   A model puts its pin map into the substitutions and lists the features. How a
   new model is added is in [Adding a model](docs/adding-a-model.md).
-- **`pro-ir.yaml` is obsolete.** `pro.yaml` is the only RM4 Pro file now. The
-  radio is a feature it includes by name: `rf_driver: bl3361` (the default), and
-  `rf_driver: none` in your config leaves it out for an infrared-only device,
-  which also needs no ESPHome 2026.10 any more (that requirement moved from
-  `pro.yaml` into the radio feature). `pro-ir.yaml` stays as a shim that sets
-  `rf_driver: none`.
-- The files of the layers moved as listed above. `devices/rm4/rf.yaml` is gone,
-  it was never meant to be included by hand; configs of v1.1.0 that list
-  `devices/rm4-pro/rf.yaml` still work. If you built your own device file from
-  `common/ir-proxy.yaml` or `common/controls.yaml`, point it at the new places.
+- **The radio is a feature of `pro.yaml`** that is on by default. `feature_rf:
+  none` in the `substitutions:` of your config leaves it out for an
+  infrared-only RM4 Pro, which then needs no ESPHome 2026.10 either (that
+  requirement moved from `pro.yaml` into the radio feature).
+
+### Removed
+
+- `devices/rm4/pro-ir.yaml` (new in 1.2.0): use `pro.yaml` with
+  `feature_rf: none`.
+- `devices/rm4-mini/rm4-mini.yaml` and `devices/rm4-pro/` (release 1.1.0): use
+  `devices/rm4/mini.yaml` and `devices/rm4/pro.yaml`. The old `rm4-pro.yaml` was
+  infrared only, so with it `feature_rf: none` is the same device; the old
+  `rf.yaml` next to it is part of `pro.yaml` now and is not listed any more.
+- `devices/rm4/rf.yaml`, `common/ir-proxy.yaml`, `common/controls.yaml`,
+  `platform/rtl8720c/`: moved as listed above. If you built your own device file
+  from them, point it at the new places.
 
 ### Added
 

@@ -1,10 +1,10 @@
-# The infrared-only RM4 Pro (rf_driver: none), which also builds with ESPHome
+# The infrared-only RM4 Pro (feature_rf: none), which also builds with ESPHome
 # 2026.9. Not meant for flashing.
 
 substitutions:
   name: ci-broadlink-rm4-pro-ir
   friendly_name: CI Broadlink RM4 Pro (infrared only)
-  rf_driver: none
+  feature_rf: none
 
 packages:
   broadlink_rm4_pro: !include ../../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml

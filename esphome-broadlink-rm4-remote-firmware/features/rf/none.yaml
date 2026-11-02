@@ -1,5 +1,0 @@
-# Feature: no radio.
-#
-# What a device file includes when `rf_driver: none` is set, for an RM4 Pro that
-# should stay infrared only or runs an ESPHome older than 2026.10. It adds nothing.
-{}

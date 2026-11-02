@@ -8,11 +8,11 @@ it has, everything else comes from the parts below it:
 |---|---|---|
 | Your device | [`rm4-mini.example.yaml`](../rm4-mini.example.yaml), [`rm4-pro.example.yaml`](../rm4-pro.example.yaml) | Name, Wi-Fi, API key, hotspot password. Pulls in the model file straight from GitHub. |
 | Model | [`devices/rm4/mini.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/mini.yaml), [`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml) | One file per Broadlink model: identity, pin map and the list of features. Used as a package and never edited by you. |
-| Feature `ir` | [`features/ir/ir.yaml`](../esphome-broadlink-rm4-remote-firmware/features/ir/ir.yaml) | IR receiver, IR transmitter and the Home Assistant `infrared` entities. |
-| Feature `rf` (RM4 Pro, experimental) | [`features/rf/bl3361.yaml`](../esphome-broadlink-rm4-remote-firmware/features/rf/bl3361.yaml) | The [`bl3361` component](../esphome-broadlink-rm4-remote-firmware/components/bl3361), its entities, the native `radio_frequency` entity and the actions. `features/rf/none.yaml` is the same feature switched off. |
-| Feature `controls` | [`features/controls/controls.yaml`](../esphome-broadlink-rm4-remote-firmware/features/controls/controls.yaml) | Status LED and physical button. |
+| Feature `ir` | [`features/ir.yaml`](../esphome-broadlink-rm4-remote-firmware/features/ir.yaml) | IR receiver, IR transmitter and the Home Assistant `infrared` entities. |
+| Feature `rf` (RM4 Pro, experimental) | [`features/rf.yaml`](../esphome-broadlink-rm4-remote-firmware/features/rf.yaml) | The [`bl3361` component](../esphome-broadlink-rm4-remote-firmware/components/bl3361), its entities, the native `radio_frequency` entity and the actions. `features/none.yaml` stands in for a feature that is switched off. |
+| Feature `controls` | [`features/controls.yaml`](../esphome-broadlink-rm4-remote-firmware/features/controls.yaml) | Status LED and physical button. |
 | Base | [`common/base.yaml`](../esphome-broadlink-rm4-remote-firmware/common/base.yaml) | API, OTA, fallback hotspot, captive portal. |
-| Platform | [`platform/rtl8720c/rtl8720c.yaml`](../esphome-broadlink-rm4-remote-firmware/platform/rtl8720c/rtl8720c.yaml) | Chip specifics: board, logger, the [receiver fix](#the-receiver-fix). |
+| Chip | [`common/rtl8720c.yaml`](../esphome-broadlink-rm4-remote-firmware/common/rtl8720c.yaml) | Chip specifics: board, logger, the [receiver fix](#the-receiver-fix). |
 
 That keeps your own file at a few lines, and fixes in this repository reach
 your device with the next build. `refresh: 1d` makes ESPHome check for a new
@@ -35,10 +35,10 @@ substitutions:
   pin_button: PA19
 
 packages:
-  rtl8720c: !include ../../platform/rtl8720c/rtl8720c.yaml
+  rtl8720c: !include ../../common/rtl8720c.yaml
   base: !include ../../common/base.yaml
-  controls: !include ../../features/controls/controls.yaml
-  ir: !include ../../features/ir/ir.yaml
+  controls: !include ../../features/controls.yaml
+  ir: !include ../../features/ir.yaml
 
 esphome:
   name: ${name}
@@ -56,11 +56,10 @@ hardware knowledge the features need, and your config can override them too.
 version of this config runs on the device.
 
 A feature that is optional is chosen by a substitution that names its file. The
-RM4 Pro does it for the radio: `rf_driver: bl3361` includes
-`features/rf/bl3361.yaml`, `rf_driver: none` includes `features/rf/none.yaml`,
-which is empty.
+RM4 Pro does it for the radio: `feature_rf: rf` includes `features/rf.yaml`,
+`feature_rf: none` includes `features/none.yaml`, which is empty.
 
-## Platform layer
+## Chip layer
 
 ### `esphome`
 
@@ -88,7 +87,7 @@ RTL8720C can't use both at once. The next `digitalRead()` call sets the pin up
 as a GPIO input again and frees the interrupt on the way, so the receiver sees
 the first edge of a code and then nothing at all.
 
-[`irq_read.c`](../esphome-broadlink-rm4-remote-firmware/platform/rtl8720c/irq_read.c) fixes that
+[`irq_read.c`](../esphome-broadlink-rm4-remote-firmware/common/irq_read.c) fixes that
 without touching LibreTiny:
 
 - The linker option `-Wl,--wrap=digitalRead` sends every `digitalRead()` call
@@ -258,11 +257,11 @@ demodulates 38 kHz signals.
 
 ## Radio feature (RM4 Pro, experimental)
 
-[`features/rf/bl3361.yaml`](../esphome-broadlink-rm4-remote-firmware/features/rf/bl3361.yaml)
+[`features/rf.yaml`](../esphome-broadlink-rm4-remote-firmware/features/rf.yaml)
 is part of [`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml),
 so the radio needs no line in your own config. It needs ESPHome 2026.10 or
 newer. An RM4 Pro that should stay infrared only, or runs an older ESPHome, puts
-`rf_driver: none` into the `substitutions:` of its config.
+`feature_rf: none` into the `substitutions:` of its config.
 
 What the package puts into the device:
 
@@ -318,7 +317,7 @@ the line undoes it. The router sees the new address after the next reboot, so
 expect a new DHCP lease.
 
 The packages use a LibreTiny build that has this fix, see `framework` in
-`platform/rtl8720c/rtl8720c.yaml`. If the stock firmware is still on the
+`common/rtl8720c.yaml`. If the stock firmware is still on the
 device, you do not even need the line: LibreTiny reads the address from the
 sector the stock firmware keeps it in. Flashing a full image over the stock
 firmware erases that sector, so keep the backup of the stock firmware. The real

@@ -1,9 +1,0 @@
-# Old location of the 433 MHz radio package, kept so that configs written for
-# release 1.1.0 keep working. ../rm4/pro.yaml includes the radio by itself, so
-# new configs do not list it at all.
-
-substitutions:
-  pin_rf_data: PA20
-
-packages:
-  rf: !include ../../features/rf/bl3361.yaml

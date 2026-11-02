@@ -38,7 +38,7 @@ and are not covered.
 
 What each configuration gives you:
 
-| Feature | RM4 Mini / RM4C Mini | RM4 Pro (`pro.yaml`) | RM4 Pro, infrared only (`rf_driver: none`) |
+| Feature | RM4 Mini / RM4C Mini | RM4 Pro (`pro.yaml`) | RM4 Pro, infrared only (`feature_rf: none`) |
 |---|---|---|---|
 | Infrared emitter (`infrared` entity) | ✅ | ✅ | ✅ |
 | Infrared receiver (`infrared` entity) | ✅ | ✅ | ✅ |
@@ -239,7 +239,7 @@ tunes it over a UART and exchanges the raw signal with it through one data pin.
 The external component [`bl3361`](esphome-broadlink-rm4-remote-firmware/components/bl3361)
 implements that, and [`pro.yaml`](esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml)
 brings it along with the infrared part, so there is nothing extra to include
-(ESPHome 2026.10 or newer; `rf_driver: none` in your config leaves the radio out). In Home
+(ESPHome 2026.10 or newer; `feature_rf: none` in your config leaves the radio out). In Home
 Assistant you get:
 
 - **RF Frequency** and **RF Custom Frequency**: the frequency of the radio as a
@@ -277,12 +277,12 @@ rm4-mini.example.yaml        your config: name, Wi-Fi, keys. Pulls the rest from
 rm4-pro.example.yaml
 esphome-broadlink-rm4-remote-firmware/
   devices/rm4/               one file per model: mini.yaml, pro.yaml
-  features/
-    ir/                      infrared emitter and receiver (pin_ir_tx, pin_ir_rx)
-    rf/                      433 MHz radio of the BL3361 module (pin_rf_data), or none
-    controls/                status LED and button (pin_status_led, pin_button)
-  common/                    base: API, OTA, hotspot, captive portal
-  platform/rtl8720c/         chip specifics: board, logger, the IR receiver fix
+  features/                  one file per function, the pins come from the model
+    ir.yaml                  infrared emitter and receiver (pin_ir_tx, pin_ir_rx)
+    rf.yaml                  433 MHz radio of the BL3361 module (pin_rf_data)
+    controls.yaml            status LED and button (pin_status_led, pin_button)
+    none.yaml                stands in for a feature that is switched off
+  common/                    base: API, OTA, hotspot; rtl8720c: board, logger, IR receiver fix
   components/bl3361/         external component for the 433 MHz radio
 docs/                        guides: configuration, Home Assistant, 433 MHz, devices
 .github/                     CI: lint, host tests, build for every device
@@ -296,11 +296,11 @@ docs/                        guides: configuration, Home Assistant, 433 MHz, dev
 | Feature `rf` | The radio: frequency entities, receive, send, learning. |
 | Feature `controls` | Status LED and physical button. |
 | Base | API, OTA, fallback hotspot and captive portal. |
-| Platform | Board, logger and the receiver fix. |
+| Chip | Board, logger and the receiver fix (`common/rtl8720c.yaml`). |
 
 Two details worth knowing. The IR receiver does not work on the RTL8720C out of
 the box, because LibreTiny drops the interrupt of a pin when it is read; a
-linker wrap in [`irq_read.c`](esphome-broadlink-rm4-remote-firmware/platform/rtl8720c/irq_read.c)
+linker wrap in [`irq_read.c`](esphome-broadlink-rm4-remote-firmware/common/irq_read.c)
 fixes that without touching LibreTiny. And the hardware UART logger is off
 (`baud_rate: 0`), because it interferes with the receiver interrupts; logs are
 available over Wi-Fi. Everything is explained in
@@ -316,10 +316,10 @@ the features don't cover, a new feature folder; see
 - `dev` is where development happens. To try it, set `ref: dev` (and
   `firmware_ref: dev` for the RM4 Pro) in the package of your config.
 - Configs written for **v1.0.0** pull `broadlink-rm4-mini.yaml` from the root of
-  this repository, configs of **v1.1.0** use `devices/rm4-mini/rm4-mini.yaml` and
-  `devices/rm4-pro/`, and `devices/rm4/pro-ir.yaml` of **v1.2.0** is the RM4 Pro
-  without the radio. These files still exist and forward to the new places, so
-  they keep working; new configs should use the example files.
+  this repository; that file still exists and forwards to `devices/rm4/mini.yaml`.
+  The files of **v1.1.0** (`devices/rm4-mini/`, `devices/rm4-pro/`) and `pro-ir.yaml`
+  of **v1.2.0** are gone since v1.3.0, see the [changelog](CHANGELOG.md) for what to
+  use instead. New configs should use the example files.
 
 Use a commit hash or tag as `ref` to stay on a fixed state.
 

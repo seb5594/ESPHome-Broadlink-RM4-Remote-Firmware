@@ -1,5 +1,0 @@
-# Old location of the RM4 Mini device file, kept so that configs written for
-# release 1.0.0 and 1.1.0 keep working. New configs use ../rm4/mini.yaml.
-
-packages:
-  rm4_mini: !include ../rm4/mini.yaml
