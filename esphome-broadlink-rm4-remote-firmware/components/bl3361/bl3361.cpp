@@ -513,26 +513,7 @@ bool BL3361Component::configure_(const FrequencyPlan &plan, Direction direction)
 }
 
 bool BL3361Component::transact_again_(uint16_t command, const uint8_t *payload, size_t payload_size) {
-  if (this->transact_(command, payload, payload_size))
-    return true;
-  this->resync_();
-  return this->transact_(command, payload, payload_size);
-}
-
-void BL3361Component::resync_() {
-  ESP_LOGW(TAG, "Trying to bring the module back into step with it");
-  // A frame the module has only half received makes it wait for the rest, and
-  // it takes our next requests for that rest. Filling the longest frame up with
-  // zeros lets it end the broken frame (the checksum does not match, so it is
-  // dropped) and look for the next magic number again.
-  uint8_t filler[FRAME_MAX_SIZE] = {};
-  this->serial_.write_array(filler, sizeof(filler));
-  this->serial_.flush();
-  delay(30);
-  uint8_t byte;
-  while (this->serial_.available() > 0 && this->serial_.read_byte(&byte)) {
-  }
-  this->decoder_.reset();
+  return this->transact_(command, payload, payload_size) || this->transact_(command, payload, payload_size);
 }
 
 bool BL3361Component::read_rssi_(uint8_t *rssi) {

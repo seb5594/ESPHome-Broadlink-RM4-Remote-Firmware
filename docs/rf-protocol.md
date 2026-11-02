@@ -45,7 +45,11 @@ UART0 can be routed to two pairs of pins (`PA11`/`PA12` and `PA13`/`PA14`), so
 LibreTiny leaves `PIN_SERIAL0_TX` and `PIN_SERIAL0_RX` undefined, and ESPHome
 only matches pins against exactly these names. `PA14`/`PA13` therefore end up on
 a software serial that does not exist on this chip, and the writes go to the
-log UART instead. The component opens `Serial0` itself and names the pins.
+log UART instead. The component opens the port itself through the SDK of the chip
+and names the pins. It does not use the `Serial0` class of LibreTiny either: the
+receive interrupt behind it does not always run for the last byte of a reply, so
+that byte stays in the FIFO until the next one arrives and every reply looks one
+byte short. The port is read by polling instead.
 
 Every request is one frame,
 and the module answers with a frame whose command number is the request's plus

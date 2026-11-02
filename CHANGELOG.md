@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.2.4 - 2026-11-02
+
+### Fixed
+
+- **The cause of the cut-short replies**: the receive interrupt of the Arduino
+  `Serial` class of the chip does not always run for the last byte of a reply.
+  That byte stayed in the receive FIFO until the next reply arrived and showed up
+  in front of it (the values `14`, `13`, `27` in front of the frames in the log
+  were the signal strengths of the readings before). Every reply looked one byte
+  short, the signal strength could not be read, and the frequency search and
+  `rf_learn` failed. The module is not at fault, and it does not need a power
+  cycle. The component now reads the UART of the chip by polling, through the
+  SDK, and no longer depends on the interrupt.
+- The attempt of 1.2.2 to bring the module back into step (a frame of zeros after
+  a request without an answer) is gone again: the module never lost its framing.
+  A request without an answer is sent once more, nothing else.
+
 ## 1.2.3 - 2026-11-02
 
 ### Fixed
@@ -9,8 +26,7 @@
   device) is understood again: a reply without payload counts as complete once
   its length field has arrived. Receiving and sending work in that state. The
   signal strength cannot be read then, because its value is the last byte. This
-  state comes from the module and stays until the power of the device is cut
-  for a few seconds.
+  state was caused by the serial link of the chip, see 1.2.4.
 - A lost signal strength reading no longer holds the main loop for 300 ms every
   second. After a lost reading the sensor waits 30 s before it asks again.
 

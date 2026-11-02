@@ -165,7 +165,7 @@ CONFIG_SCHEMA = cv.All(
         }
     )
     .extend(cv.COMPONENT_SCHEMA),
-    # The serial link uses LibreTiny's Serial0, see module_serial.h.
+    # The serial link reads the UART of the chip by polling, see module_serial.h.
     cv.only_on(["rtl87xx"]),
 )
 

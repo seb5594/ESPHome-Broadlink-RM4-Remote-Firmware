@@ -147,12 +147,8 @@ class BL3361Component : public Component {
   bool transact_(uint16_t command, const uint8_t *payload, size_t payload_size, uint8_t *reply = nullptr,
                  size_t *reply_size = nullptr);
   bool configure_(const FrequencyPlan &plan, Direction direction);
-  /// Like transact_(), but if the module does not answer, it gets one chance to
-  /// find the start of a frame again (see resync_()) and the request is repeated.
+  /// Like transact_(), but a request without an answer is sent once more.
   bool transact_again_(uint16_t command, const uint8_t *payload, size_t payload_size);
-  /// Brings a module back into step whose frame parser was left in the middle of
-  /// a frame, which happens when this chip resets while it writes to the UART.
-  void resync_();
   bool read_rssi_(uint8_t *rssi);
 
   // ----- Data pin side -----

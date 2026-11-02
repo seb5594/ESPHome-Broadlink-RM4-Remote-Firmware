@@ -14,13 +14,16 @@ namespace esphome::bl3361 {
 // can be routed to two pairs of pins, so LibreTiny leaves PIN_SERIAL0_TX and
 // PIN_SERIAL0_RX undefined. The component compares its pins with exactly these
 // names, finds no match for PA14/PA13, and ends up on the software serial that
-// does not exist on this chip. Opening Serial0 here names the pins directly.
+// does not exist on this chip. The port is opened here through the SDK of the
+// chip instead, which names the pins directly, and it is read by polling, see
+// module_serial.cpp.
 class ModuleSerial {
  public:
   static constexpr uint32_t BAUD_RATE = 115200;
 
   /// Opens the port. Safe to call again.
   void open();
+  /// Non-zero if a byte can be read. The port is polled, there is no buffer behind it.
   size_t available();
   /// Reads one byte, false if there is none.
   bool read_byte(uint8_t *byte);
