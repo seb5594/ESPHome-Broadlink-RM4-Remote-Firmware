@@ -30,7 +30,7 @@ driver adds the **433 MHz radio**.
 |---|---|---|---|---|---|---|---|
 | Broadlink **RM4 Mini** | `RM4_MINI-MAIN-V4.0.1` | RTL8720CF | yes / yes | no radio | yes | **works** | [RM4 Mini](docs/devices/rm4-mini.md) |
 | Broadlink **RM4C Mini** | `RM4_MINI-MAIN-V4.0.1` | RTL8720CF | yes / yes | no radio | yes | **works** | [RM4 Mini](docs/devices/rm4-mini.md) |
-| Broadlink **RM4 Pro** | `RM4_PRO V2.1.6` | RTL8720CF + BL3361 radio | yes / yes | receive and send, **experimental** | yes | pin map verified in the stock firmware, radio not confirmed on a device yet | [RM4 Pro](docs/devices/rm4-pro.md) |
+| Broadlink **RM4 Pro** | `RM4_PRO V2.1.6` | RTL8720CF + BL3361 radio | yes / yes | receive and send, **experimental** | yes | pin map verified in the stock firmware, radio receives on a device, sending not confirmed yet | [RM4 Pro](docs/devices/rm4-pro.md) |
 | RM4C Pro, other RM4 variants | unknown | probably RTL8720CF | probably | unknown | | **untested**, check the board marking first | [Help wanted](#help-wanted) |
 
 Older generations (RM3, RM mini 3, RM Pro and RM Pro+) are built differently
@@ -38,15 +38,17 @@ and are not covered.
 
 What each configuration gives you:
 
-| Feature | RM4 Mini / RM4C Mini | RM4 Pro | RM4 Pro with `rf.yaml` |
+| Feature | RM4 Mini / RM4C Mini | RM4 Pro (`pro.yaml`) | RM4 Pro, infrared only (`pro-ir.yaml`) |
 |---|---|---|---|
 | Infrared emitter (`infrared` entity) | ✅ | ✅ | ✅ |
 | Infrared receiver (`infrared` entity) | ✅ | ✅ | ✅ |
 | Status LED, button | ✅ | ✅ | ✅ |
 | Over-the-air updates, fallback hotspot | ✅ | ✅ | ✅ |
-| 433 MHz receive (event with raw timings) | – | – | 🧪 experimental |
-| 433 MHz send (`rf_send_raw` action) | – | – | 🧪 experimental |
-| 433 MHz signal strength, channel scan | – | – | 🧪 experimental |
+| 433 MHz receive (event with raw timings) | – | 🧪 experimental | – |
+| 433 MHz send (`rf_send_raw` action, `radio_frequency` entity) | – | 🧪 experimental | – |
+| Frequency as a choice or a number, kept over restarts | – | 🧪 experimental | – |
+| Learning like the Broadlink app (`rf_learn`) | – | 🧪 experimental | – |
+| 433 MHz signal strength, channel scan | – | 🧪 experimental | – |
 | Temperature/humidity sensor of some models | not mapped | not mapped | not mapped |
 
 ## Quick start
@@ -60,6 +62,7 @@ What each configuration gives you:
 3. Add the device in Home Assistant, see [In Home Assistant](#in-home-assistant).
 
 You need ESPHome **2026.9.0** or newer and Home Assistant **2026.6.0** or newer.
+The 433 MHz radio of the RM4 Pro needs ESPHome **2026.10.0**.
 
 | What | Version | Why |
 |---|---|---|
@@ -228,22 +231,26 @@ are in [Home Assistant and HAIR](docs/home-assistant.md).
 ## 433 MHz radio (experimental)
 
 > **Experimental.** The radio driver was written from a flash dump of the
-> stock firmware. It has not been confirmed on a device yet, and may need
-> adjustments (signal polarity, timing). Infrared does not depend on it.
+> stock firmware. The module answers and frames are received on a device,
+> sending is not confirmed yet. Infrared does not depend on it.
 
 The 433 MHz radio of the RM4 Pro is a separate module, BL3361-1. The Wi-Fi chip
 tunes it over a UART and exchanges the raw signal with it through one data pin.
 The external component [`bl3361`](esphome-broadlink-rm4-remote-firmware/components/bl3361)
-implements that, and [`rf.yaml`](esphome-broadlink-rm4-remote-firmware/devices/rm4-pro/rf.yaml)
-wires it up. To switch it on, uncomment the `rf.yaml` line in
-[`rm4-pro.example.yaml`](rm4-pro.example.yaml). Then:
+implements that, and [`pro.yaml`](esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml)
+brings it along with the infrared part, so there is nothing extra to include
+(ESPHome 2026.10 or newer; `pro-ir.yaml` is the infrared-only variant). In Home
+Assistant you get:
 
+- **RF Frequency** and **RF Custom Frequency**: the frequency of the radio as a
+  choice and as any value in MHz (305-340 MHz and 430-440 MHz), kept over restarts.
+- **Learning like the Broadlink app**: the action `rf_learn` finds the frequency
+  while you hold a key and captures the code when you press it briefly.
+- **Sending**: `rf_send_raw` and `rf_send_raw_at` send a code, the native
+  **RF Transmitter** entity lets other integrations send through the radio.
 - **Receiving**: every code that arrives is fired as the event
   `esphome.<name>_rf_received` with the pulse timings in `code`.
-- **Sending**: the action `rf_send_raw` sends such a code, `repeat` times.
-- **Tuning**: 305-340 MHz and 430-440 MHz, 433.92 MHz by default;
-  `rf_set_frequency` changes it at runtime and `rf_scan` shows the signal
-  strength of 20 channels around it.
+- `rf_scan` shows the signal strength of 20 channels around the frequency.
 
 You do not need a 433 MHz device to try it, and there are cheap ways to see what
 is on the air. The [433 MHz guide](docs/433mhz.md) covers:
@@ -268,7 +275,7 @@ the pin map and the identity of the hardware, the rest is shared:
 rm4-mini.example.yaml        your config: name, Wi-Fi, keys. Pulls the rest from GitHub
 rm4-pro.example.yaml
 esphome-broadlink-rm4-remote-firmware/
-  devices/<device>/          pin map of one device (+ rf.yaml for the RM4 Pro radio)
+  devices/rm4/               mini.yaml, pro.yaml (infrared + radio), pro-ir.yaml, rf.yaml
   common/                    base (API, OTA, hotspot), controls (LED, button), IR proxy
   platform/rtl8720c/         chip specifics: board, logger, the IR receiver fix
   components/bl3361/         external component for the 433 MHz radio
@@ -293,17 +300,18 @@ fixes that without touching LibreTiny. And the hardware UART logger is off
 available over Wi-Fi. Everything is explained in
 [ESPHome configuration](docs/configuration.md).
 
-A new RM4 variant needs a new folder under `devices/` and, if it brings hardware
+A new RM4 variant needs a new file in `devices/rm4/` and, if it brings hardware
 the shared layers don't cover, a new layer next to them.
 
 ## Branches and versions
 
-- `main` is the stable state. This is **v1.1.0**, see the [changelog](CHANGELOG.md).
+- `main` is the stable state. This is **v1.2.0**, see the [changelog](CHANGELOG.md).
 - `dev` is where development happens. To try it, set `ref: dev` (and
   `firmware_ref: dev` for the RM4 Pro) in the package of your config.
 - Configs written for **v1.0.0** pull `broadlink-rm4-mini.yaml` from the root of
-  this repository. That file still exists and forwards to the new location, so
-  they keep working; new configs should use the example files.
+  this repository, configs of **v1.1.0** use `devices/rm4-mini/rm4-mini.yaml` and
+  `devices/rm4-pro/`. These files still exist and forward to the new places in
+  `devices/rm4/`, so they keep working; new configs should use the example files.
 
 Use a commit hash or tag as `ref` to stay on a fixed state.
 
@@ -314,6 +322,7 @@ Use a commit hash or tag as `ref` to stay on a fixed state.
 - [433 MHz guide](docs/433mhz.md): setup, testing, detecting, rules
 - [RF module protocol](docs/rf-protocol.md): how the radio module works
 - Device pages: [RM4 Mini](docs/devices/rm4-mini.md), [RM4 Pro](docs/devices/rm4-pro.md)
+- [Using the radio in Home Assistant](docs/rf-home-assistant.md): frequency, learning, sending, a dashboard card
 - [Troubleshooting](docs/troubleshooting.md)
 - [Changelog](CHANGELOG.md)
 

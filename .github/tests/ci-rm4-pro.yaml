@@ -1,12 +1,13 @@
-# Used by the CI workflow to validate and build the package from the current
-# branch. Not meant for flashing.
+# The RM4 Pro as users get it: infrared and the 433 MHz radio. The radio
+# component is fetched from GitHub like a user's config would do it; CI passes the
+# commit under test as `firmware_ref`. Not meant for flashing.
 
 substitutions:
   name: ci-broadlink-rm4-pro
   friendly_name: CI Broadlink RM4 Pro
 
 packages:
-  broadlink_rm4_pro: !include ../../esphome-broadlink-rm4-remote-firmware/devices/rm4-pro/rm4-pro.yaml
+  broadlink_rm4_pro: !include ../../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml
 
 wifi:
   ssid: ci-network

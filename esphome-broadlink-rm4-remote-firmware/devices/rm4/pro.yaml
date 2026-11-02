@@ -1,0 +1,15 @@
+# Broadlink RM4 Pro: infrared and the EXPERIMENTAL 433 MHz radio.
+#
+# This is the entry point of the device. It combines
+#   pro-ir.yaml   the pin map and the infrared proxy
+#   rf.yaml       the radio: frequency entities, learning, sending
+# so there is nothing else to include. For an infrared-only RM4 Pro use
+# pro-ir.yaml instead. See rm4-pro.example.yaml in the repository root.
+
+packages:
+  ir: !include pro-ir.yaml
+  rf: !include rf.yaml
+
+esphome:
+  # The native radio_frequency entity of rf.yaml exists since ESPHome 2026.10.
+  min_version: 2026.10.0

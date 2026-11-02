@@ -198,7 +198,7 @@ These parts are the same for all devices of this repository and live in the
 shared docs:
 
 - [ESPHome configuration](../configuration.md): the layers behind
-  `rm4-mini.yaml`, the receiver fix and how to customize your device
+  `mini.yaml`, the receiver fix and how to customize your device
 - [Home Assistant and HAIR](../home-assistant.md): entities, learning a
   remote, moving codes over from the Broadlink integration
 - [Troubleshooting](../troubleshooting.md)

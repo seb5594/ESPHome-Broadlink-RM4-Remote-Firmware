@@ -11,11 +11,12 @@ from your secrets, and the device brings these entities (names depend on your
 | IR Receiver | `infrared.broadlink_rm4c_mini_ir_receiver` | Receives IR codes. Its state is the time of the last received code. |
 | Button | `binary_sensor.broadlink_rm4c_mini_button` | The physical button. |
 
-On an RM4 Pro with the experimental [433 MHz layer](433mhz.md) there are a
-few more: a diagnostic **RF Signal Strength** sensor, the event
-`esphome.<name>_rf_received` for every received code and the actions
-`rf_send_raw`, `rf_set_frequency` and `rf_scan` under the device's ESPHome
-actions.
+An RM4 Pro with the experimental 433 MHz radio has more: the frequency as a
+choice and as a number, a diagnostic **RF Signal Strength** sensor, the native
+**RF Transmitter** entity, the events `esphome.<name>_rf_received` and
+`esphome.<name>_rf_learn` and the actions `rf_learn`, `rf_send_raw`,
+`rf_send_raw_at`, `rf_set_frequency` and `rf_scan`. They are described in
+[Using the radio in Home Assistant](rf-home-assistant.md).
 
 Current Home Assistant releases list all emitters and receivers under
 **Settings → Connectivity → Infrared**. Integrations for IR-controlled devices, such as

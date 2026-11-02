@@ -1,34 +1,55 @@
 # Changelog
 
-## Unreleased
+## 1.2.0 - 2026-11-02
+
+The 433 MHz radio of the RM4 Pro works with a device for the first time: the
+module answers and frames are received. The Pro now brings the radio along, the
+device files moved, and a shared MAC address of two devices can be fixed.
 
 ### Added
 
-- **Frequency entity** `RF Frequency` for Home Assistant: choose the frequency of
-  the radio from a list (`315 MHz` and `433.92 MHz` by default, `options:` for
-  your own). The last choice is kept over restarts. `Custom` shows a frequency
-  that is not in the list.
-- **Learning like the Broadlink app**: the actions `rf_learn`,
-  `rf_find_frequency` and `rf_cancel`. The radio sweeps both bands while a key is
-  held, tunes to what it found and captures a signal that repeats. The steps come
-  as the event `esphome.<name>_rf_learn`; [the guide](docs/433mhz.md#learning-a-remote-like-the-broadlink-app)
-  has an automation that shows them as notifications and prints the finished
-  action.
+- **The radio is part of the RM4 Pro**: `devices/rm4/pro.yaml` includes it, so
+  there is no `rf.yaml` to add any more. `devices/rm4/pro-ir.yaml` is the
+  infrared-only variant. The radio needs ESPHome 2026.10.0 or newer (the Mini and
+  `pro-ir.yaml` stay at 2026.9.0).
+- **Native `radio_frequency` entity** `RF Transmitter`: Home Assistant's own
+  entity type for sub-GHz transmitters, through which other integrations send via
+  the radio. It only sends. ESPHome marks the interface as experimental and it
+  changed in 2026.10, which is why the radio needs that release.
+- **Frequency entities**: `RF Frequency`, a choice (`315 MHz` and `433.92 MHz`
+  by default, `options:` for your own, `Custom` for one that is not in the list)
+  and `RF Custom Frequency`, a number for any value in MHz. The last frequency is
+  kept over restarts.
+- **Learning like the Broadlink app**: the actions `rf_learn`, `rf_find_frequency`
+  and `rf_cancel`. The radio sweeps both bands while a key is held (the two
+  500 kHz requests of the stock firmware, refined in 100 kHz and 10 kHz steps),
+  tunes to what it found and captures a signal that repeats. The steps come as the
+  event `esphome.<name>_rf_learn`.
 - `rf_send_raw_at` sends on another frequency for one code, `frequency_mhz` is in
-  the event `esphome.<name>_rf_received` now, and `sweep_margin` and
-  `settle_time` are options of `bl3361:`.
-- Host tests for the frequency search, the detection of repeated frames, the
-  settle window and the time handling.
-
+  the event `esphome.<name>_rf_received`, and `settle_time` and `sweep_margin` are
+  options of `bl3361:`.
+- [Using the radio in Home Assistant](docs/rf-home-assistant.md): a step-by-step
+  guide with the learning automation, switches and buttons for learned codes,
+  your own frequencies, a dashboard card, and what HAIR and the Broadlink
+  integration can and cannot do for RF (HAIR is infrared only).
 - The `mac_address` substitution. Some BL3357 modules have no MAC address in
   the chip, so the Wi-Fi driver gives every one of them `00:e0:4c:b7:23:00` and
   an RM4 Pro and an RM4C Mini on the same network ended up sharing MAC and IP
   address. With the real address in `mac_address` each device uses its own, see
   [the guide](docs/configuration.md#same-mac-address-on-several-devices).
   Confirmed on an RM4 Pro and an RM4C Mini.
+- Host tests for the frequency search, the detection of repeated frames, the
+  settle window and the time handling; CI builds every device and the paths of
+  earlier releases.
 
 ### Changed
 
+- **The device files moved** to `devices/rm4/`: `mini.yaml`, `pro.yaml`,
+  `pro-ir.yaml` and `rf.yaml`. The old paths (`devices/rm4-mini/rm4-mini.yaml`,
+  `devices/rm4-pro/rm4-pro.yaml`, `devices/rm4-pro/rf.yaml`) and the root file
+  `broadlink-rm4-mini.yaml` still work and forward to the new files; the old
+  `rm4-pro.yaml` stays infrared only, as it was. The example configs use the new
+  paths.
 - The packages build with a LibreTiny branch that fixes the MAC address
   handling (`platform/rtl8720c/rtl8720c.yaml`) instead of the latest release.
   This goes back to a release as soon as one contains the fix.
@@ -38,12 +59,6 @@
 
 ### Fixed
 
-- **Frames were cut in two at random places.** The interval between two edges
-  sometimes came out negative and was read as 71 minutes, which ended the frame;
-  it shows in the log as the marker `+1073741823`. Such an interval counts as 0
-  now.
-- **Noise right after tuning** produced a handful of frames and events.
-  Everything in the first 1.5 s after tuning is dropped (`settle_time`).
 - **The 433 MHz radio of the RM4 Pro never reached the module.** ESPHome's `uart`
   component cannot open UART0 of the RTL8720C on `PA14`/`PA13`: the chip can
   route that UART to two pairs of pins, so LibreTiny leaves the default pins
@@ -52,8 +67,14 @@
   chip`). The component `bl3361` now opens `Serial0` itself, with the pins and
   the format the stock firmware uses. `rf.yaml` no longer has a `uart:` section;
   a `uart:` of your own for the radio (and `uart_id` in `bl3361:`) has to go.
-- The pins and the format are confirmed from the stock firmware dump now, see
+  The pins and the format are confirmed from the stock firmware dump, see
   [RF module protocol](docs/rf-protocol.md#the-uart-protocol).
+- **Frames were cut in two at random places.** The interval between two edges
+  sometimes came out negative and was read as 71 minutes, which ended the frame;
+  it shows in the log as the marker `+1073741823`. Such an interval counts as 0
+  now.
+- **Noise right after tuning** produced a handful of frames and events.
+  Everything in the first 1.5 s after tuning is dropped (`settle_time`).
 
 ## 1.1.0 - 2026-10-23
 

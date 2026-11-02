@@ -5,7 +5,7 @@
 
 substitutions:
   # Shown in the device info in Home Assistant, see `esphome.project`.
-  project_version: "1.1.0"
+  project_version: "1.2.0"
 
 api:
 

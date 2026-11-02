@@ -1,0 +1,21 @@
+# The infrared-only RM4 Pro (pro-ir.yaml), which also builds with ESPHome 2026.9.
+# Not meant for flashing.
+
+substitutions:
+  name: ci-broadlink-rm4-pro-ir
+  friendly_name: CI Broadlink RM4 Pro (infrared only)
+
+packages:
+  broadlink_rm4_pro: !include ../../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro-ir.yaml
+
+wifi:
+  ssid: ci-network
+  password: ci-password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - id: !extend ota_esphome
+    encryption:

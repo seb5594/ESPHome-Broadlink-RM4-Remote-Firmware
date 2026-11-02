@@ -4,4 +4,4 @@
 # rm4-mini.example.yaml, which points at the device file directly.
 
 packages:
-  rm4_mini: !include esphome-broadlink-rm4-remote-firmware/devices/rm4-mini/rm4-mini.yaml
+  rm4_mini: !include esphome-broadlink-rm4-remote-firmware/devices/rm4/mini.yaml

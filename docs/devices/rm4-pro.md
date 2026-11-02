@@ -61,7 +61,7 @@ Which gives:
 
 | Function | Pin | Profile field | Used here |
 |---|---|---|---|
-| IR transmitter (carrier) | `PA4` | irda carrier_pin 4 | yes, `rm4-pro.yaml` |
+| IR transmitter (carrier) | `PA4` | irda carrier_pin 4 | yes, `pro-ir.yaml` |
 | IR receiver (data) | `PA18` | irda data_pin 18 | yes |
 | Status LED | `PA7` | irda led_pin 7 | yes, inverted (on = low) |
 | Button | `PA19` | rmparam app_keypad_pin 19 | yes, inverted, pull-up |
@@ -98,10 +98,11 @@ See the [433 MHz guide](../433mhz.md) for the setup and for how to test it
 without owning a 433 MHz device, and [RF module protocol](../rf-protocol.md)
 for how the radio module works and what is still open.
 
-In short: [`rf.yaml`](../../esphome-broadlink-rm4-remote-firmware/devices/rm4-pro/rf.yaml)
-talks to the radio over UART0, switches it between receive and transmit and
-passes the raw signal through `PA20`. A received code arrives as a Home
-Assistant event with its pulse timings; `rf_send_raw` sends one.
+In short: [`rf.yaml`](../../esphome-broadlink-rm4-remote-firmware/devices/rm4/rf.yaml),
+which `pro.yaml` includes, talks to the radio over UART0, switches it between
+receive and transmit and passes the raw signal through `PA20`. A received code
+arrives as a Home Assistant event with its pulse timings; `rf_send_raw` sends
+one, and `rf_learn` learns a remote the way the Broadlink app does.
 
 ## Help wanted
 

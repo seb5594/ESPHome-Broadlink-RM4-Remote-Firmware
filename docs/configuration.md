@@ -7,8 +7,8 @@ comes from the layers below it:
 | Layer | File | Purpose |
 |---|---|---|
 | Your device | [`rm4-mini.example.yaml`](../rm4-mini.example.yaml), [`rm4-pro.example.yaml`](../rm4-pro.example.yaml) | Name, Wi-Fi, API key, hotspot password. Pulls in the device file straight from GitHub. |
-| Device | [`devices/<device>/<device>.yaml`](../esphome-broadlink-rm4-remote-firmware/devices) | Pin map, name and project info. Used as a package and never edited by you. |
-| 433 MHz radio (RM4 Pro, experimental) | [`devices/rm4-pro/rf.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4-pro/rf.yaml) | Optional. The UART to the radio module and the [`bl3361` component](../esphome-broadlink-rm4-remote-firmware/components/bl3361). |
+| Device | [`devices/rm4/mini.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/mini.yaml), [`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml), [`pro-ir.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro-ir.yaml) | Pin map, name and project info. Used as a package and never edited by you. `pro.yaml` is `pro-ir.yaml` plus the radio. |
+| 433 MHz radio (RM4 Pro, experimental) | [`devices/rm4/rf.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/rf.yaml) | Part of `pro.yaml`. The [`bl3361` component](../esphome-broadlink-rm4-remote-firmware/components/bl3361), its entities, the native `radio_frequency` entity and the actions. |
 | IR proxy | [`common/ir-proxy.yaml`](../esphome-broadlink-rm4-remote-firmware/common/ir-proxy.yaml) | IR receiver, IR transmitter and the Home Assistant `infrared` entities. |
 | Controls | [`common/controls.yaml`](../esphome-broadlink-rm4-remote-firmware/common/controls.yaml) | Status LED and physical button. |
 | Base | [`common/base.yaml`](../esphome-broadlink-rm4-remote-firmware/common/base.yaml) | API, OTA, fallback hotspot, captive portal. |
@@ -251,14 +251,23 @@ demodulates 38 kHz signals.
 
 ## 433 MHz radio layer (RM4 Pro, experimental)
 
-[`rf.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4-pro/rf.yaml) is an optional package for the
-RM4 Pro. It is not part of `rm4-pro.yaml`, so an infrared-only device stays
-as small as it was:
+[`rf.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/rf.yaml) is part of
+[`pro.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml), so the
+radio needs no line in your own config. It needs ESPHome 2026.10 or newer. An
+RM4 Pro that should stay infrared only, or runs an older ESPHome, uses
+[`pro-ir.yaml`](../esphome-broadlink-rm4-remote-firmware/devices/rm4/pro-ir.yaml)
+instead of `pro.yaml`.
+
+What the package puts into the device:
 
 ```yaml
-bl3361:      # external component of this repository
+bl3361:                    # external component of this repository
   data_pin: PA20
-  frequency: 433.92MHz
+  frequency: 433.92MHz     # only the very first start, see below
+  frequency_select:        # RF Frequency: a choice
+  frequency_number:        # RF Custom Frequency: any value in MHz
+radio_frequency:           # RF Transmitter: the native Home Assistant entity
+  - platform: bl3361
 ```
 
 There is no `uart:` section: the component opens UART0 itself (TX `PA14`, RX
@@ -267,11 +276,21 @@ the RTL8720C, see [RF module protocol](rf-protocol.md#how-the-radio-is-wired).
 
 The component loads from this repository through `external_components`, with
 `firmware_ref` choosing the branch or tag. Keep it equal to the `ref` of your
-package. The component has its own options (`filter`, `idle`, `min_pulses`,
-`rssi`, `on_receive`) and actions (`bl3361.send_raw`, `bl3361.set_frequency`,
-`bl3361.scan`, `bl3361.start_receive`, `bl3361.stop`), all described in the
-[433 MHz guide](433mhz.md). How the radio module works is written down in
-[RF module protocol](rf-protocol.md).
+package. Adjust it from your own config, for example your frequencies:
+
+```yaml
+bl3361:
+  frequency_select:
+    options: [315MHz, 433.92MHz, 433.42MHz]
+```
+
+The component has more options (`filter`, `idle`, `min_pulses`, `settle_time`,
+`sweep_margin`, `rssi`, `on_receive`, `on_learn`) and actions
+(`bl3361.send_raw`, `bl3361.set_frequency`, `bl3361.scan`,
+`bl3361.find_frequency`, `bl3361.learn`, `bl3361.cancel`, `bl3361.start_receive`,
+`bl3361.stop`), all described in the [433 MHz guide](433mhz.md) and, for
+Home Assistant, in [Using the radio in Home Assistant](rf-home-assistant.md). How
+the radio module works is written down in [RF module protocol](rf-protocol.md).
 
 ## Same MAC address on several devices
 
@@ -318,7 +337,7 @@ packages:
   broadlink_rm4_mini:
     url: https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware
     ref: main
-    files: [esphome-broadlink-rm4-remote-firmware/devices/rm4-mini/rm4-mini.yaml]
+    files: [esphome-broadlink-rm4-remote-firmware/devices/rm4/mini.yaml]
 
 # Add components ...
 sensor:
