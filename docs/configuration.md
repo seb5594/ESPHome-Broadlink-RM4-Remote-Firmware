@@ -284,30 +284,25 @@ driver then uses its built-in `00:e0:4c:b7:23:00` for every unit, and two
 devices on one network end up with the same MAC and the same IP address. Check
 the MAC of your device in the router or in the ESPHome log.
 
-This is fixed in LibreTiny itself. The fix is not part of a release yet, so
-point the framework at the branch that has it and give each device its real
-address, which is printed on its label and shown in the Broadlink app:
+Give such a device its real address, which is printed on its label and shown in
+the Broadlink app, with the substitution `mac_address` (twelve hex digits):
 
 ```yaml
-rtl87xx:
-  framework:
-    version: 1.14.0
-    source: https://github.com/seb5594/libretiny.git#feat/rtl87xx-real-mac
-
-esphome:
-  build_flags:
-    - -DLT_WIFI_STA_MAC=aabbccddeeff   # twelve hex digits, no colons
+substitutions:
+  mac_address: "ec0bae9e21c1"
 ```
 
 The address is only held in RAM, nothing is written to the chip, and removing
-the two entries undoes it. The router sees the new address after the next
-reboot, so expect a new DHCP lease.
+the line undoes it. The router sees the new address after the next reboot, so
+expect a new DHCP lease.
 
-If the stock firmware is still on the device, no entry is needed: LibreTiny
-reads the address from the sector the stock firmware keeps it in, as long as
-that sector is there. Flashing a full image over the stock firmware erases it,
-so keep the backup of the stock firmware: the real address is in it, the six
-bytes at offset `0x4008` (the sector at `0x4000` starts with the text `CALD`).
+The packages use a LibreTiny build that has this fix, see `framework` in
+`platform/rtl8720c/rtl8720c.yaml`. If the stock firmware is still on the
+device, you do not even need the line: LibreTiny reads the address from the
+sector the stock firmware keeps it in. Flashing a full image over the stock
+firmware erases that sector, so keep the backup of the stock firmware. The real
+address is in it, the six bytes at offset `0x4008` (the sector at `0x4000`
+starts with the text `CALD`).
 
 Do not set a MAC address through `on_boot` and `WiFi.setMacAddress()` or
 `wifi_set_mac_address()` in a lambda. In current LibreTiny releases those write

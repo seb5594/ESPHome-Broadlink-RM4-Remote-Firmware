@@ -1,0 +1,22 @@
+# Same as ci-rm4-mini.yaml, with a MAC address set. Checks that the build flag
+# reaches the compiler. Not meant for flashing.
+
+substitutions:
+  name: ci-broadlink-rm4-mini-mac
+  friendly_name: CI Broadlink RM4 Mini MAC
+  mac_address: "020000000001"
+
+packages:
+  broadlink_rm4_mini: !include ../../esphome-broadlink-rm4-remote-firmware/devices/rm4-mini/rm4-mini.yaml
+
+wifi:
+  ssid: ci-network
+  password: ci-password
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - id: !extend ota_esphome
+    encryption:
