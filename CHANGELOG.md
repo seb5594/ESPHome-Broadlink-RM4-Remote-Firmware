@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Author and address of the project in `common/base.yaml`, as the substitutions
+  `project_author` and `project_url` and as the comment of the device, which the
+  ESPHome dashboard shows. Your own config can set another `esphome: comment`.
+
 ## 1.3.0 - 2026-11-02
 
 ### Changed
