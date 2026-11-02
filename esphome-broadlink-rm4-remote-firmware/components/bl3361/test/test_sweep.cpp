@@ -47,7 +47,8 @@ struct FakeRadio {
     seed = seed * 1103515245u + 12345u;
     const int noise = static_cast<int>((seed >> 16) % 3) - 1;  // quiet band: 20 to 22
     const double centre = plan.channel_khz(channel);
-    const bool hears = signal_khz > 0 && std::fabs(centre - signal_khz) <= plan.step_khz / 2.0;
+    const bool on_air = signal_reads < 0 || reads <= signal_reads;
+    const bool hears = on_air && signal_khz > 0 && std::fabs(centre - signal_khz) <= plan.step_khz / 2.0;
     *rssi = static_cast<uint8_t>(21 + noise + (hears ? 6 : 0));
     return true;
   }
@@ -58,6 +59,7 @@ struct FakeRadio {
   int failing_tunings{0};   // the first tunings are not answered
   int lose_every{0};        // every n-th reading is not answered
   bool lose_all_reads{false};
+  int signal_reads{-1};     // the transmitter is only heard during this many readings, -1: always
   uint32_t seed{1};
   int tunings{0};
   int reads{0};
@@ -142,6 +144,21 @@ static void test_sweep_reports_a_broken_module() {
   radio.fail_tune = true;
   FrequencySweep sweep;
   CHECK(run(sweep, radio) == SweepState::FAILED);
+}
+
+static void test_sweep_ignores_a_burst_of_noise() {
+  // A signal that is there for the first pass only, such as a spike of the quiet
+  // band, is not a transmitter: it does not come back in the finer steps.
+  FakeRadio spike(433920);
+  spike.signal_reads = 90;  // the 90 readings of the coarse pass
+  FrequencySweep sweep;
+  CHECK(run(sweep, spike) == SweepState::TIMEOUT);
+  CHECK(sweep.passes() > 3);
+
+  // One that stays is found, as before.
+  FakeRadio steady(433920);
+  FrequencySweep second;
+  CHECK(run(second, steady) == SweepState::FOUND);
 }
 
 static void test_sweep_survives_lost_answers() {
@@ -460,6 +477,7 @@ int main() {
   test_sweep_stays_inside_the_tuning_tables();
   test_sweep_without_a_signal_gives_up();
   test_sweep_reports_a_broken_module();
+  test_sweep_ignores_a_burst_of_noise();
   test_sweep_survives_lost_answers();
   test_sweep_gives_up_on_a_silent_module();
   test_sweep_does_not_block_the_loop();

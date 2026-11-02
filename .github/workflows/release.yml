@@ -1,0 +1,127 @@
+name: Release
+
+# Publishes a GitHub release with the notes of the changelog. Two ways to start it:
+#   - push a tag like v1.3.0 (the commit has to be on main), or
+#   - run the workflow by hand on main and name the version; it creates the tag.
+# Either way it refuses to release unless the version in the project and the
+# changelog agree and the Validate workflow passed on that very commit.
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, for example 1.3.0 (the tag becomes v1.3.0)
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Work out the version
+        id: version
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if [ "$REF" != "refs/heads/main" ]; then
+              echo "::error::Run this workflow on main, not on $REF"
+              exit 1
+            fi
+            version="${INPUT_VERSION#v}"
+          else
+            version="${REF_NAME#v}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$version' is not a version like 1.3.0"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Check that the project says the same
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          project=$(sed -n 's/^ *project_version: *"\(.*\)".*/\1/p' esphome-broadlink-rm4-remote-firmware/common/base.yaml)
+          if [ "$project" != "$VERSION" ]; then
+            echo "::error::common/base.yaml says project_version $project, not $VERSION"
+            exit 1
+          fi
+          if ! grep -q "^## $VERSION - " CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no section '## $VERSION - <date>'"
+            exit 1
+          fi
+
+      - name: Check the tag and the commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            if git rev-parse -q --verify "refs/tags/v$VERSION" > /dev/null; then
+              echo "::error::The tag v$VERSION exists already"
+              exit 1
+            fi
+          else
+            git fetch --no-tags origin main
+            if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+              echo "::error::The tagged commit is not on main"
+              exit 1
+            fi
+          fi
+          if gh release view "v$VERSION" > /dev/null 2>&1; then
+            echo "::error::There is a release v$VERSION already"
+            exit 1
+          fi
+
+      - name: Check that Validate passed on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          passed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/validate.yml/runs?head_sha=$sha&event=push" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')
+          if [ "$passed" -lt 1 ]; then
+            echo "::error::No successful Validate run for $sha. Wait for it, or fix what it found."
+            exit 1
+          fi
+
+      - name: Take the notes from the changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          awk -v heading="## $VERSION - " 'index($0, heading) == 1 { found = 1; next } found && /^## / { exit } found' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::error::The changelog section of $VERSION is empty"
+            exit 1
+          fi
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            gh release create "v$VERSION" --target "$GITHUB_SHA" --title "v$VERSION" --notes-file notes.md --latest
+          else
+            gh release create "v$VERSION" --verify-tag --title "v$VERSION" --notes-file notes.md --latest
+          fi

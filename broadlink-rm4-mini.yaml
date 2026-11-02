@@ -1,7 +1,0 @@
-# Compatibility entry point for configs written for release 1.0.0, which pull
-# `broadlink-rm4-mini.yaml` as a remote package. The device file moved; this
-# file keeps the old reference working. New configs should use
-# rm4-mini.example.yaml, which points at the device file directly.
-
-packages:
-  rm4_mini: !include esphome-broadlink-rm4-remote-firmware/devices/rm4/mini.yaml

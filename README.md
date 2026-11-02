@@ -315,11 +315,10 @@ the features don't cover, a new feature folder; see
 - `main` is the stable state. This is **v1.3.0**, see the [changelog](CHANGELOG.md).
 - `dev` is where development happens. To try it, set `ref: dev` (and
   `firmware_ref: dev` for the RM4 Pro) in the package of your config.
-- Configs written for **v1.0.0** pull `broadlink-rm4-mini.yaml` from the root of
-  this repository; that file still exists and forwards to `devices/rm4/mini.yaml`.
-  The files of **v1.1.0** (`devices/rm4-mini/`, `devices/rm4-pro/`) and `pro-ir.yaml`
-  of **v1.2.0** are gone since v1.3.0, see the [changelog](CHANGELOG.md) for what to
-  use instead. New configs should use the example files.
+- Configs written for an older release used other file names (`broadlink-rm4-mini.yaml`
+  of **v1.0.0**, `devices/rm4-mini/` and `devices/rm4-pro/` of **v1.1.0**,
+  `pro-ir.yaml` of **v1.2.0**). They are gone since v1.3.0, see the
+  [changelog](CHANGELOG.md) for what to use instead, or take an example file.
 
 Use a commit hash or tag as `ref` to stay on a fixed state.
 
@@ -331,6 +330,7 @@ Use a commit hash or tag as `ref` to stay on a fixed state.
 - [RF module protocol](docs/rf-protocol.md): how the radio module works
 - Device pages: [RM4 Mini](docs/devices/rm4-mini.md), [RM4 Pro](docs/devices/rm4-pro.md)
 - [Adding a model](docs/adding-a-model.md): how the files fit together, for another Broadlink
+- [Releasing](docs/releasing.md): how a version is published
 - [Using the radio in Home Assistant](docs/rf-home-assistant.md): frequency, learning, sending, a dashboard card
 - [Troubleshooting](docs/troubleshooting.md)
 - [Changelog](CHANGELOG.md)

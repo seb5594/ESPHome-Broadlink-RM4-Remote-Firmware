@@ -15,7 +15,8 @@ namespace esphome::bl3361 {
 //      request of 70 channels and 430-440 MHz as one of 20 channels. These are
 //      the two requests the stock scan builds (basefreq 305000 and 430000,
 //      step 500). The channel that stands out of the average is the candidate.
-//   2. Refinement in 100 kHz steps, 20 channels around the candidate.
+//   2. Refinement in 100 kHz steps, 20 channels around the candidate. If nothing
+//      stands out there, the candidate was noise and the search starts over.
 //   3. Only inside 315.000-315.999 MHz and 433.000-433.999 MHz, where the module
 //      can do 10 kHz steps, a last refinement in 10 kHz steps.
 //
@@ -208,9 +209,16 @@ class FrequencySweep {
   }
 
   void refine_100_done_() {
-    // If the signal is gone by now, the 500 kHz candidate has to do.
-    uint32_t khz = this->stands_out_(1) ? this->peak_khz_ : this->candidate_khz_;
-    uint8_t rssi = this->stands_out_(1) ? this->peak_rssi_ : this->candidate_rssi_;
+    // A transmitter is still there when the neighbourhood is read again, a burst
+    // of noise is not. Without the confirmation the search goes back to the
+    // coarse pass instead of settling on a frequency where nothing transmits.
+    if (!this->stands_out_(this->margin_)) {
+      this->state_ = SweepState::COARSE;
+      this->begin_pass_();
+      return;
+    }
+    uint32_t khz = this->peak_khz_;
+    uint8_t rssi = this->peak_rssi_;
     FrequencyPlan fine;
     if (plan_frequency(khz, &fine) && fine.step_khz == 10) {
       // 10 kHz steps exist here. Start one channel of 100 kHz below, because the

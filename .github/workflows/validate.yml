@@ -88,8 +88,8 @@ jobs:
         run: bash .github/tests/check_receiver_fix.sh .github/tests/.esphome/build
 
   # Checks that every device file resolves when it is pulled in as a remote
-  # package at this very commit, which is how users include it, the old root
-  # file of release 1.0.0 among them. The RM4 Pro is compiled as well: that exercises
+  # package at this very commit, which is how users include it. The RM4 Pro is
+  # compiled as well: that exercises
   # the include paths and the component download the way they work outside of a
   # clone.
   remote-package:
@@ -110,10 +110,6 @@ jobs:
             files: esphome-broadlink-rm4-remote-firmware/devices/rm4/pro.yaml
             compile: false
             rf: none
-          # Configs written for release 1.0.0 include this file.
-          - device: rm4-mini-v1-shim
-            files: broadlink-rm4-mini.yaml
-            compile: false
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

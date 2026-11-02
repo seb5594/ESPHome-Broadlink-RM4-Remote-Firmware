@@ -32,6 +32,8 @@
 
 ### Removed
 
+- `broadlink-rm4-mini.yaml` in the root of the repository (release 1.0.0): use
+  `devices/rm4/mini.yaml`, as `rm4-mini.example.yaml` does.
 - `devices/rm4/pro-ir.yaml` (new in 1.2.0): use `pro.yaml` with
   `feature_rf: none`.
 - `devices/rm4-mini/rm4-mini.yaml` and `devices/rm4-pro/` (release 1.1.0): use
@@ -42,11 +44,21 @@
   `platform/rtl8720c/`: moved as listed above. If you built your own device file
   from them, point it at the new places.
 
+### Fixed
+
+- The frequency search no longer takes a short burst of noise for a transmitter.
+  A candidate of the coarse pass is only used if it shows up again when the
+  neighbourhood is read in finer steps, otherwise the search goes on. Before, a
+  noise peak of the quiet band (322 MHz at 27 against an average of 20) ended the
+  search, and the capture then waited 20 s on the wrong frequency. Hold the key
+  for the whole search, as the log of `rf_learn` asks.
+
 ### Added
 
 - The `repeat_timeout` option of the `bl3361` component.
-- Host tests for the receive filter.
+- Host tests for the receive filter and for noise in the search.
 - CI checks the RM4 Pro with the radio switched off as a remote package.
+- A release workflow, see [Releasing](docs/releasing.md).
 
 ## 1.2.5 - 2026-11-02
 
