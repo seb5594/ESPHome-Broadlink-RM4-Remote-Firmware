@@ -20,3 +20,30 @@ api:
 ota:
   - id: !extend ota_esphome
     encryption:
+
+# What users add to the radio: a lock and a button that send learned codes. A
+# `button:` entity must not clash with the physical button of the package.
+lock:
+  - platform: template
+    name: Car
+    optimistic: true
+    assumed_state: true
+    lock_action:
+      - bl3361.send_raw:
+          frequency: 434.3MHz
+          repeat: 8
+          code: [300, -300, 600, -9000]
+    unlock_action:
+      - bl3361.send_raw:
+          frequency: 434.3MHz
+          repeat: 8
+          code: [300, -300, 300, -600, 600, -9000]
+
+button:
+  - platform: template
+    name: Trunk
+    on_press:
+      - bl3361.send_raw:
+          frequency: 434.3MHz
+          repeat: 8
+          code: [600, -300, 300, -9000]

@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.2.5 - 2026-11-02
+
+### Fixed
+
+- A `button:` entity of your own, such as one that sends a learned code, made the
+  configuration invalid: the physical button of the package had the ID `button`,
+  which is the name of an ESPHome integration. The ID is now `device_button`.
+  (A config that referred to the ID `button` of the package has to use the new
+  name.)
+
+### Changed
+
+- The CI configuration of the RM4 Pro contains a lock and a button that send
+  codes, so this kind of addition is checked on every change.
+
 ## 1.2.4 - 2026-11-02
 
 ### Fixed

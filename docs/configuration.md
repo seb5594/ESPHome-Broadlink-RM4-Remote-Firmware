@@ -168,7 +168,7 @@ status_led:
 
 binary_sensor:
   - platform: gpio
-    id: button
+    id: device_button
     name: Button
     pin:
       number: ${pin_button}

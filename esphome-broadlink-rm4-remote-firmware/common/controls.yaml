@@ -11,7 +11,9 @@ status_led:
 
 binary_sensor:
   - platform: gpio
-    id: button
+    # Not just `button`: that name belongs to the ESPHome integration, and a
+    # `button:` entity of your own would clash with it.
+    id: device_button
     name: Button
     pin:
       number: ${pin_button}
