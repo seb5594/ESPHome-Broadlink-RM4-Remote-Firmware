@@ -292,7 +292,7 @@ address, which is printed on its label and shown in the Broadlink app:
 rtl87xx:
   framework:
     version: 1.14.0
-    source: https://github.com/seb5594/libretiny.git#feat/rtl87xx-ram-only-mac
+    source: https://github.com/seb5594/libretiny.git#feat/rtl87xx-real-mac
 
 esphome:
   build_flags:
