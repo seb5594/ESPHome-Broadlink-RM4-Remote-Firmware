@@ -33,7 +33,8 @@
 #   - RF Frequency (a choice) and RF Custom Frequency (any MHz): the frequency
 #     of the radio, kept over restarts.
 #   - RF Transmitter: the native radio_frequency entity, with which integrations
-#     of Home Assistant send through the radio.
+#     of Home Assistant send through the radio. It also reports what the radio
+#     receives, for the receivers Home Assistant is adding to that platform.
 #   - Received 433 MHz codes as the event `esphome.<name>_rf_received`, one per
 #     transmission, with the raw pulse timings in `code` and the frequency in
 #     `frequency_mhz`.
@@ -126,10 +127,18 @@ bl3361:
             }
             return text;
 
-# The radio as the native Home Assistant entity for sub-GHz transmitters. Other
-# integrations send through it; for your own codes the actions below do the same.
+# The radio as the native Home Assistant entity for sub-GHz transmitters and
+# receivers. Other integrations send through it, and every transmission the
+# radio receives is reported to Home Assistant through it as well; for your own
+# codes the actions below do the same. Name the frequency of your remotes to
+# tell Home Assistant which carrier the received codes are on (otherwise the
+# tuning range of the module is declared); in your own config:
+#   radio_frequency:
+#     - id: !extend rf_entity
+#       frequency: 434.3MHz
 radio_frequency:
-  - platform: bl3361
+  - id: rf_entity
+    platform: bl3361
     name: RF Transmitter
 
 api:

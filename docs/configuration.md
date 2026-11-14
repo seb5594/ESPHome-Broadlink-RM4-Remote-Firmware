@@ -271,7 +271,7 @@ bl3361:                    # external component of this repository
   frequency: 433.92MHz     # only the very first start, see below
   frequency_select:        # RF Frequency: a choice
   frequency_number:        # RF Custom Frequency: any value in MHz
-radio_frequency:           # RF Transmitter: the native Home Assistant entity
+radio_frequency:           # RF Transmitter: the native entity, sends and receives
   - platform: bl3361
 ```
 

@@ -13,7 +13,7 @@ from your secrets, and the device brings these entities (names depend on your
 
 An RM4 Pro with the experimental 433 MHz radio has more: the frequency as a
 choice and as a number, a diagnostic **RF Signal Strength** sensor, the native
-**RF Transmitter** entity, the events `esphome.<name>_rf_received` and
+**RF Transmitter** entity (also a receiver, as far as Home Assistant supports it), the events `esphome.<name>_rf_received` and
 `esphome.<name>_rf_learn` and the actions `rf_learn`, `rf_send_raw`,
 `rf_send_raw_at`, `rf_set_frequency` and `rf_scan`. They are described in
 [Using the radio in Home Assistant](rf-home-assistant.md).

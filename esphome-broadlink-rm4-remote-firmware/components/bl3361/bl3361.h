@@ -99,6 +99,11 @@ class BL3361Component : public Component {
   }
 #endif
   Trigger<std::vector<int32_t>> *get_receive_trigger() { return &this->receive_trigger_; }
+  /// Another listener for the received transmissions, next to the on_receive
+  /// trigger: the radio_frequency entity passes them on to Home Assistant.
+  template<typename F> void add_on_receive_callback(F &&callback) {
+    this->receive_callbacks_.add(std::forward<F>(callback));
+  }
   /// Fires while a frequency search or a learning session progresses: the
   /// phase ("sweep", "found", "capture", "learned", "timeout" or "failed"),
   /// the frequency in MHz, how often the code was seen and the code itself.
@@ -220,6 +225,7 @@ class BL3361Component : public Component {
   ESPPreferenceObject frequency_pref_;
 
   Trigger<std::vector<int32_t>> receive_trigger_;
+  CallbackManager<void(const std::vector<int32_t> &)> receive_callbacks_;
   Trigger<std::string, float, uint32_t, std::vector<int32_t>> learn_trigger_;
 #ifdef USE_SENSOR
   sensor::Sensor *rssi_sensor_{nullptr};

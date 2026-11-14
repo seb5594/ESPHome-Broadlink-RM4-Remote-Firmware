@@ -637,6 +637,7 @@ void BL3361Component::publish_frame_(const std::vector<int32_t> &frame) {
       ESP_LOGI(TAG, "Received %u pulses: [%s]", (unsigned) transmission.size(), text.c_str());
     }
     this->receive_trigger_.trigger(transmission);
+    this->receive_callbacks_.call(transmission);
   }
 }
 

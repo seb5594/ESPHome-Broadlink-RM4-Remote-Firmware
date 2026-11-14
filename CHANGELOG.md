@@ -1,12 +1,33 @@
 # Changelog
 
-## Unreleased
+## 1.4.0 - 2026-11-14
 
 ### Added
 
+- **The radio is a receiver of Home Assistant's radio frequency platform too.**
+  The `RF Transmitter` entity announces itself as transmitter and receiver, and
+  passes every transmission the module receives on to the API as a receive event,
+  the same ones that fire `on_receive` (one per transmission, repeats swallowed).
+  Home Assistant creates a receiver entity from it, and with that HAIR lists
+  `RF-RX` next to `RF-TX`, as soon as its ESPHome integration supports radio
+  receivers. The ESPHome integration of Home Assistant 2026.11.1 does not yet: it
+  only creates the transmitter. According to the release notes of HAIR 1.2.0 that
+  comes with 2026.12. This side has not been tried against such a Home Assistant.
+  The events `esphome.<name>_rf_received` stay as they are.
+- `frequency:` on the `radio_frequency` platform, optional. It declares one fixed
+  frequency instead of the tuning range of the module, which tells receivers like
+  HAIR the carrier of the codes. The entity has the ID `rf_entity` now, so your
+  config can extend it:
+  `radio_frequency: [{id: !extend rf_entity, frequency: 434.3MHz}]`. See
+  [Receiving through the platform](docs/rf-home-assistant.md#receiving-through-the-platform).
 - Author and address of the project in `common/base.yaml`, as the substitutions
   `project_author` and `project_url` and as the comment of the device, which the
   ESPHome dashboard shows. Your own config can set another `esphome: comment`.
+
+### Changed
+
+- The documentation of HAIR is brought up to date: HAIR knows radio since its
+  release 1.2.0 and sends through the `RF Transmitter` of the device.
 
 ## 1.3.0 - 2026-11-02
 

@@ -24,16 +24,30 @@ static constexpr uint32_t DEFAULT_REPEAT_GAP_US = 10000;
 void RadioFrequencyEntity::setup() {
   radio_frequency::RadioFrequency::setup();
   this->set_supports_transmitter(true);
-  // The tuning range of the module, in Hz. The two bands it covers are
-  // 305-340 MHz and 430-440 MHz; a frequency in between is refused when sending.
-  this->traits_.set_frequency_min_hz(BAND_LOW_FIRST_KHZ * 1000u);
-  this->traits_.set_frequency_max_hz((BAND_HIGH_LAST_KHZ + 1) * 1000u);
+  this->set_supports_receiver(true);
+  if (this->fixed_frequency_hz_ != 0) {
+    this->traits_.set_fixed_frequency_hz(this->fixed_frequency_hz_);
+  } else {
+    // The tuning range of the module, in Hz. The two bands it covers are
+    // 305-340 MHz and 430-440 MHz; a frequency in between is refused when sending.
+    this->traits_.set_frequency_min_hz(BAND_LOW_FIRST_KHZ * 1000u);
+    this->traits_.set_frequency_max_hz((BAND_HIGH_LAST_KHZ + 1) * 1000u);
+  }
   this->traits_.add_supported_modulation(radio_frequency::RadioFrequencyModulation::RADIO_FREQUENCY_MODULATION_OOK);
+
+  // What the module receives goes to the API as a receive event. The timings are
+  // already cleaned up by the receive filter, so the tolerance only matters to a
+  // decoder that reads them, and there is none here.
+  this->parent_->add_on_receive_callback([this](const std::vector<int32_t> &transmission) {
+    remote_base::RemoteReceiveData data(transmission, 25, remote_base::TOLERANCE_MODE_PERCENTAGE);
+    this->on_receive(data);
+  });
 }
 
 void RadioFrequencyEntity::dump_config() {
   radio_frequency::RadioFrequency::dump_config();
   ESP_LOGCONFIG(TAG, "  Sends through the BL3361 module, on its own frequency unless the request names one");
+  ESP_LOGCONFIG(TAG, "  Reports what the module receives, on the frequency selected for it");
 }
 
 bool RadioFrequencyEntity::control(const radio_frequency::RadioFrequencyCall &call) {

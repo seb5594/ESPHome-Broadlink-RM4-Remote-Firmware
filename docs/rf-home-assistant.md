@@ -280,21 +280,54 @@ every press (rolling code, as most newer cars have) is not replayable: the car
 ignores a code it has already heard. If the learned code differs every time you
 press the same key, this is the reason.
 
-## Sending through Home Assistant's radio frequency platform
+## Sending and receiving through Home Assistant's radio frequency platform
 
 Home Assistant has a native **Radio frequency** platform since 2026.5: an
 entity that represents a sub-GHz transmitter, which **other integrations** use to
-send. The release notes name integrations such as a Honeywell string lights and
+send. Receivers are a second entity type of the platform, see
+[below](#receiving-through-the-platform). The release notes name integrations such as a Honeywell string lights and
 a Novy cooker hood integration. The device offers it as **RF Transmitter**
 (`radio_frequency.broadlink_rm4_pro_rf_transmitter`), so such an integration can
 use the RM4 Pro: when you set it up, it asks which transmitter to use, and you
 pick this one.
 
-- It only sends. Received codes arrive as events, see below.
 - It sends on the frequency the integration asks for. A request for a frequency
   the module cannot tune to (anything between 340 and 430 MHz) is refused.
 - ESPHome marks this entity as experimental and its interface changes between
   releases, which is why the radio needs ESPHome 2026.10.
+
+### Receiving through the platform
+
+From release 1.4.0 the entity also announces itself as a **receiver** and passes
+every transmission the module receives on to Home Assistant, the same ones that
+arrive as the event `esphome.<name>_rf_received` (one per transmission, repeats
+swallowed, see [Receiving](#receiving)). Home Assistant calls a device that
+sends and receives a transmitter and a receiver entity.
+
+What is missing is on the Home Assistant side: the ESPHome integration of
+**2026.11.1** creates only the transmitter, it filters for devices that announce a
+transmitter and has no receiver entity (checked in its source). According to the
+release notes of [HAIR](https://github.com/DAB-LABS/HAIR/releases) v1.2.0, ESPHome
+radio receivers follow with **Home Assistant 2026.12**. Until then HAIR shows
+`RF-TX` for the device and no `RF-RX`, and the event `rf_received` is the way to
+get codes. The receiver side of the firmware has not been tried against a Home
+Assistant that supports it yet; reports are welcome.
+
+HAIR is helped by a declared carrier: a receiver that names one frequency tells it
+which band the codes are on. The platform has an optional `frequency:` for that,
+in your own config:
+
+```yaml
+radio_frequency:
+  - id: !extend rf_entity
+    frequency: 434.3MHz
+```
+
+Without it the entity declares the tuning range of the module (305-340 MHz and
+430-440 MHz). With it, it declares that one frequency; the radio is still tuned by
+`RF Frequency`, and a request to send on another frequency is refused by Home
+Assistant. Put the block into your device config, below `packages:`, it extends
+the entity `rf_entity` of the package.
 
 ## Receiving
 
@@ -374,10 +407,13 @@ tap on **Learn a remote** guides through both steps with notifications.
 
 ## HAIR and the Broadlink integration
 
-- **HAIR** is for infrared only: it talks to Home Assistant's `infrared` platform
-  and its Sniffer captures IR, so it cannot learn an RF code. RF devices are an
-  [open request](https://github.com/DAB-LABS/HAIR/issues/4). Use `rf_learn` and
-  your own switches and buttons for RF.
+- **HAIR** knows radio since its release 1.2.0 (beta). Per its release notes it
+  sends RF through an ESPHome radio transmitter on Home Assistant 2026.11 or
+  newer, which is what the `RF Transmitter` of this device is, and it hears RF
+  through ESPHome radio receivers on Home Assistant 2026.12 (see
+  [above](#receiving-through-the-platform)). Rolling-code remotes such as car
+  keys are not recognized by it. Until the receiver is available, use `rf_learn`
+  and your own switches and buttons for RF.
 - The **Broadlink integration** learns and sends RF through its `remote` entity
   while the RM4 Pro runs the Broadlink firmware (`remote.learn_command` with
   `command_type: rf`, also in two steps: hold, then press briefly). With this
@@ -390,7 +426,7 @@ tap on **Learn a remote** guides through both steps with notifications.
 | Press the key briefly | phase `capture`, then `learned` |
 | The code is stored in `.storage` under the device and the command | You paste it into a switch, button or script |
 | `remote.send_command` | `rf_send_raw_at` |
-| Radio frequency platform (transmitter only) | `RF Transmitter` entity |
+| Radio frequency platform (transmitter, receiver from 1.4.0) | `RF Transmitter` entity |
 
 Codes learned with the Broadlink app or integration are a compressed binary
 packet and cannot be imported; learn them again.

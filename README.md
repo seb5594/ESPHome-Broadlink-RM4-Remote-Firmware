@@ -46,6 +46,7 @@ What each configuration gives you:
 | Over-the-air updates, fallback hotspot | ✅ | ✅ | ✅ |
 | 433 MHz receive (event with raw timings) | – | 🧪 experimental | – |
 | 433 MHz send (`rf_send_raw` action, `radio_frequency` entity) | – | 🧪 experimental | – |
+| 433 MHz receive as `radio_frequency` receiver (for HAIR, needs Home Assistant with ESPHome receivers) | – | 🧪 experimental | – |
 | Frequency as a choice or a number, kept over restarts | – | 🧪 experimental | – |
 | Learning like the Broadlink app (`rf_learn`) | – | 🧪 experimental | – |
 | 433 MHz signal strength, channel scan | – | 🧪 experimental | – |
@@ -247,7 +248,9 @@ Assistant you get:
 - **Learning like the Broadlink app**: the action `rf_learn` finds the frequency
   while you hold a key and captures the code when you press it briefly.
 - **Sending**: `rf_send_raw` and `rf_send_raw_at` send a code, the native
-  **RF Transmitter** entity lets other integrations send through the radio.
+  **RF Transmitter** entity lets other integrations send through the radio and
+  reports what it receives, as far as Home Assistant supports receivers (the
+  ESPHome integration of 2026.11.1 does not yet).
 - **Receiving**: every code that arrives is fired as the event
   `esphome.<name>_rf_received` with the pulse timings in `code`.
 - `rf_scan` shows the signal strength of 20 channels around the frequency.

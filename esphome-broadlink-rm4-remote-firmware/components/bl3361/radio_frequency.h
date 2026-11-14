@@ -18,16 +18,22 @@ namespace esphome::bl3361 {
 
 class BL3361Component;
 
-/// Sends the raw timings Home Assistant hands over through the module. Only a
-/// transmitter: received codes already reach Home Assistant as events, and
-/// Home Assistant's radio frequency platform does not take receivers yet.
+/// The module as transmitter and receiver of Home Assistant's radio frequency
+/// platform. It sends the raw timings Home Assistant hands over, and it passes
+/// every transmission the module receives on to the API as a receive event, the
+/// same ones that fire `on_receive` of the component. Home Assistant creates the
+/// entity of a receiver from them as soon as its integration supports it.
 class RadioFrequencyEntity : public radio_frequency::RadioFrequency, public Parented<BL3361Component> {
  public:
   void setup() override;
   void dump_config() override;
+  /// Declare one fixed frequency instead of the tuning range of the module.
+  void set_fixed_frequency_hz(uint32_t frequency_hz) { this->fixed_frequency_hz_ = frequency_hz; }
 
  protected:
   bool control(const radio_frequency::RadioFrequencyCall &call) override;
+
+  uint32_t fixed_frequency_hz_{0};
 };
 
 }  // namespace esphome::bl3361
