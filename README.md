@@ -106,31 +106,61 @@ Photo of the board by [phdindota](https://github.com/phdindota/broadlink-rm4mini
 <details>
 <summary><b>RM4 Pro</b> (board <code>RM4_PRO V2.1.6</code>)</summary>
 
-This guide is shorter on purpose: nobody has documented the mechanical side
-of the RM4 Pro in a way this project could verify, and a guess could break a
-case. What is known, and a safe way to find the rest:
+1. Peel off the ring-shaped pad on the bottom (marked red). It is glued on;
+   the round label in its middle stays where it is. Keep the pad, it goes back
+   on afterwards.
 
-1. Look at the underside for a rubber pad, rubber feet or a sticker. On the
-   RM4 Mini the screws sit underneath such a pad; check the same places.
-   Lift a pad from one edge with a fingernail or a plastic tool and put it back
-   afterwards.
-2. Remove any screws you find and work the case halves apart with a plastic
-   tool along the seam. If it does not give, look for more screws or clips
-   instead of forcing it.
-3. Find the board marking `RM4_PRO V2.1.6` and the two modules: the Wi-Fi
-   module **BL3357-P** (Realtek RTL8720CF) and the radio module **BL3361-1**.
-4. The serial port is the **`WIFI DEBUG` header**, according to
-   [phdindota](https://github.com/phdindota/broadlink-rm4pro-esphome):
+   <p align="center">
+     <img src="docs/images/rm4-pro-bottom-pad.jpg" alt="Underside of the RM4 Pro with the ring-shaped pad around the label marked in red" width="420">
+   </p>
 
-   | Header pin | Signal | Connect to |
+2. Under the pad are **two Phillips screws**, diagonally opposite each other
+   next to the label. Remove them and lift the base off the case.
+
+   <p align="center">
+     <img src="docs/images/rm4-pro-bottom-screws.jpg" alt="Underside with the pad removed, two screws marked in red, top right and bottom left of the label" width="420">
+   </p>
+
+3. Inside, the board sits under a white plastic carrier that holds the IR
+   LEDs. **One more screw** goes through the carrier into the board, next to
+   the lowest IR LED (marked red). Remove it and take the board out.
+
+   <p align="center">
+     <img src="docs/images/rm4-pro-inner-screw.jpg" alt="Inside of the case: white carrier with the IR LEDs, the screw that holds the board marked in red" width="420">
+   </p>
+
+4. Check the board: the marking `RM4_PRO V2.1.6` is printed on the back. On
+   the front sit the Wi-Fi module **BL3357-P** (Realtek RTL8720CF, right) and
+   the radio module **BL3361-1** (top).
+
+   <p align="center">
+     <img src="docs/images/rm4-pro-pcb-front.jpg" alt="Front of the RM4_PRO V2.1.6 board with the BL3361 radio module at the top, the IR LED ring in the middle and the BL3357-P Wi-Fi module on the right" width="420">
+     <img src="docs/images/rm4-pro-pcb-back.jpg" alt="Back of the RM4_PRO V2.1.6 board with the WIFI DEBUG test pads on the right" width="420">
+   </p>
+
+5. The serial port is the **`WIFI DEBUG`** group of test pads on the back,
+   right edge. Every pad is labelled on the silkscreen:
+
+   <p align="center">
+     <img src="docs/images/rm4-pro-wifi-debug.jpg" alt="Close-up of the WIFI DEBUG pads: T8 +5V, T1 3.3V, T2 pin21:IOA0, T3 pin2:RX0, T7 GND in the upper row; T6 pin16:RX2, T11 GND, T5 pin17:TX2 in the lower row" width="420">
+   </p>
+
+   | Pad | Silkscreen | Connect to |
    |---|---|---|
-   | 16 | RX2 | adapter TX |
-   | 17 | TX2 | adapter RX |
-   | 21 | `PA0` (boot mode) | `3.3V` while flashing, see [Flashing](#flashing) |
-   | | GND | adapter GND |
+   | T6 | `pin16:RX2` | adapter TX |
+   | T5 | `pin17:TX2` | adapter RX |
+   | T11 (or T7) | `GND` | adapter GND |
+   | T2 | `pin21:IOA0` | bridge to T1 (`3.3V`) while flashing, see [Flashing](#flashing) |
+   | T1 | `3.3V` | only for the bridge to T2 |
+   | T8 | `+5V` | **nothing**, right next to T1 |
+   | T3 | `pin2:RX0` | nothing, must not be pulled to GND |
 
-If you have an RM4 Pro open on the table, photos and the positions of its
-screws would complete this guide, see [Help wanted](#help-wanted).
+   These are **flat pads, not through-holes**. Solder the wires on: wires that
+   are only pressed or taped on tend to lose contact halfway through a read,
+   which shows up as timeouts. The T1–T2 bridge only has to hold at the moment
+   of power-up. If it slips, the chip boots the stock firmware, which echoes
+   everything back; ltchiptool then fails with
+   `invalid literal for int() with base 16: 'DW'`.
 
 </details>
 
@@ -340,8 +370,7 @@ Use a commit hash or tag as `ref` to stay on a fixed state.
 
 ## Help wanted
 
-- **RM4 Pro owners**: does `Listening on 433.920 MHz` appear in the log? Do key fobs or socket remotes produce events? Photos of the
-  open case and the position of its screws would finish the opening guide.
+- **RM4 Pro owners**: does `Listening on 433.920 MHz` appear in the log? Do key fobs or socket remotes produce events?
 - **Other RM4 variants**: board marking, module, and whether it works.
 - **Logic analyzer or SDR owners**: a capture of the UART while the stock
   firmware learns a code settles the open questions of the
