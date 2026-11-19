@@ -18,6 +18,28 @@ before that nothing is forgotten.
    - **With a tag:** `git tag v1.3.0 && git push origin v1.3.0`. The commit has to
      be on `main`.
 
+## Which ESPHome versions the CI builds
+
+The [Validate workflow](../.github/workflows/validate.yml) does not list ESPHome
+versions. [`esphome_matrix.py`](../.github/tests/esphome_matrix.py) works them out
+from PyPI at every run, and the workflow also runs every Monday, so a new ESPHome
+release is built within a week without anybody touching the CI:
+
+- **The oldest release a device supports**, exactly. It comes from the
+  `min_version` of the files the device uses (`common/rtl8720c.yaml` for all,
+  `features/rf.yaml` for the radio of the RM4 Pro), so raising a `min_version`
+  moves the CI with it.
+- **The newest patch release of each of the last four minor series** since then.
+- **The newest pre-release**, as long as it is ahead of every stable release. A
+  pre-release that does not build does not turn the run red, it is marked in the
+  job name and shows the problem before the release is out.
+- The config that only differs by the MAC address is built on the oldest and the
+  newest release only.
+
+The script uses nothing but the Python standard library and has tests that run
+without network (`python -m unittest discover -s .github/tests -p 'test_*.py'`).
+A device that is added to the CI goes into its `CONFIGS` table.
+
 ## What the workflow checks
 
 It stops with a message, and publishes nothing, if

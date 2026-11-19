@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The CI works out the ESPHome versions by itself.** It builds every device
+  with the oldest ESPHome it supports (taken from the `min_version` of the
+  project), the newest patch of the last four minor series and the newest
+  pre-release, which may fail without failing the run. The list comes from PyPI at
+  every run, and the workflow runs every Monday too, so a new ESPHome release is
+  tested within a week. See [Releasing](docs/releasing.md).
+
 ## 1.5.0 - 2026-11-19
 
 ### Changed

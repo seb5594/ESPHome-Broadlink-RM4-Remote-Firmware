@@ -319,7 +319,7 @@ esphome-broadlink-rm4-remote-firmware/
   common/                    base: API, OTA, hotspot; rtl8720c: board, logger, IR receiver fix
   components/bl3361/         external component for the 433 MHz radio
 docs/                        guides: configuration, Home Assistant, 433 MHz, devices
-.github/                     CI: lint, host tests, build for every device
+.github/                     CI: lint, host tests, build for every device with every current ESPHome
 ```
 
 | Layer | Purpose |

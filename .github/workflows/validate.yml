@@ -5,6 +5,9 @@ on:
     branches: [main, dev]
   pull_request:
   workflow_dispatch:
+  # A new ESPHome release is tested within a week, even if nobody pushes.
+  schedule:
+    - cron: "17 5 * * 1"
 
 permissions:
   contents: read
@@ -39,23 +42,34 @@ jobs:
           g++ -std=c++20 -I. -Wall -Wextra -Werror -o /tmp/test_sweep test/test_sweep.cpp
           /tmp/test_sweep
 
-  esphome:
+  # The ESPHome releases to build with are not listed here but worked out from
+  # PyPI and from the min_version of the project, see esphome_matrix.py: the oldest
+  # release a device supports, the newest patch of the last minor series and the
+  # newest pre-release, so every new release is picked up without a change here.
+  versions:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - name: Test the script
+        run: python -m unittest discover -s .github/tests -p 'test_*.py'
+      - name: Work out the releases
+        id: matrix
+        run: python .github/tests/esphome_matrix.py >> "$GITHUB_OUTPUT"
+
+  esphome:
+    name: esphome ${{ matrix.esphome }}, ${{ matrix.config }}${{ matrix.experimental && ' (pre-release)' || '' }}
+    needs: versions
+    runs-on: ubuntu-latest
+    # A pre-release that does not build is a warning ahead of time, not a red run.
+    continue-on-error: ${{ matrix.experimental }}
     strategy:
       fail-fast: false
-      matrix:
-        # The oldest release each device supports, and whatever is current. The
-        # radio of the RM4 Pro needs ESPHome 2026.10 (radio_frequency entity), the
-        # rest builds with 2026.9.
-        include:
-          - {esphome: "2026.9.0", config: ci-rm4-mini}
-          - {esphome: "latest", config: ci-rm4-mini}
-          - {esphome: "2026.9.0", config: ci-rm4-mini-mac}
-          - {esphome: "latest", config: ci-rm4-mini-mac}
-          - {esphome: "2026.9.0", config: ci-rm4-pro-ir}
-          - {esphome: "latest", config: ci-rm4-pro-ir}
-          - {esphome: "2026.10.0", config: ci-rm4-pro}
-          - {esphome: "latest", config: ci-rm4-pro}
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -71,12 +85,7 @@ jobs:
           key: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-${{ hashFiles('esphome-broadlink-rm4-remote-firmware/common/**', 'esphome-broadlink-rm4-remote-firmware/features/**', 'esphome-broadlink-rm4-remote-firmware/devices/**/*.yaml') }}
           restore-keys: platformio-${{ steps.python.outputs.python-version }}-${{ matrix.esphome }}-
       - name: Install ESPHome ${{ matrix.esphome }}
-        run: |
-          if [ "${{ matrix.esphome }}" = "latest" ]; then
-            pip install esphome
-          else
-            pip install "esphome==${{ matrix.esphome }}"
-          fi
+        run: pip install "esphome==${{ matrix.esphome }}"
       - name: Create throwaway secrets
         run: |
           echo "api_encryption_key: \"$(openssl rand -base64 32)\"" > .github/tests/secrets.yaml
