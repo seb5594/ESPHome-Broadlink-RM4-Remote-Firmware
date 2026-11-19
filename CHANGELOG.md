@@ -16,6 +16,13 @@
   the receiver follows in 2026.12 according to the HAIR 1.2.0 release notes; this
   side has not been tried against that release yet.
 
+### Documentation
+
+- The opening guide for the RM4 Pro has photos, the positions of all three screws
+  and the silkscreen names of the `WIFI DEBUG` pads now (T1 to T11), by
+  [WStameris4](https://github.com/WStameris4), see pull request #7. The pads are
+  flat, so the wires have to be soldered on.
+
 ### Fixed
 
 - **The build works with ESPHome 2026.11.** `format_hex_pretty` was renamed there,
