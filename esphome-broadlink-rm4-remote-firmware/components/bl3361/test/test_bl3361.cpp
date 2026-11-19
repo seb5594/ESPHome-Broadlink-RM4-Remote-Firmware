@@ -264,8 +264,15 @@ static void test_framer() {
   CHECK(endless.frame().size() == 8);
 }
 
+static void test_format_bytes() {
+  const uint8_t bytes[] = {0xA5, 0x5A, 0x0E};
+  CHECK(format_bytes(bytes, 3) == "A5:5A:0E");
+  CHECK(format_bytes(bytes, 0).empty());
+}
+
 int main() {
   test_frames();
+  test_format_bytes();
   test_decoder();
   test_decoder_accepts_cut_replies();
   test_config();

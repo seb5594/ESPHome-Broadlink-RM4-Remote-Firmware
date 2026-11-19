@@ -33,6 +33,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace esphome::bl3361 {
 
@@ -191,5 +192,21 @@ class FrameDecoder {
   bool complete_{false};
   uint32_t checksum_errors_{0};
 };
+
+/// Bytes as hex text for the log, "A5:A5:5A". ESPHome has a function for this
+/// too, but its name and signature changed between releases (format_hex_pretty
+/// became format_hex_pretty_to in 2026.11), so the component keeps its own.
+inline std::string format_bytes(const uint8_t *data, size_t size) {
+  static constexpr char DIGITS[] = "0123456789ABCDEF";
+  std::string text;
+  text.reserve(size * 3);
+  for (size_t i = 0; i < size; i++) {
+    if (i != 0)
+      text += ':';
+    text += DIGITS[data[i] >> 4];
+    text += DIGITS[data[i] & 0x0F];
+  }
+  return text;
+}
 
 }  // namespace esphome::bl3361

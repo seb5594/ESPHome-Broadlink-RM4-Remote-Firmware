@@ -446,7 +446,7 @@ bool BL3361Component::transact_(uint16_t command, const uint8_t *payload, size_t
   }
   this->decoder_.reset();
 
-  ESP_LOGV(TAG, "TX 0x%03X: %s", (unsigned) command, format_hex_pretty(frame, size).c_str());
+  ESP_LOGV(TAG, "TX 0x%03X: %s", (unsigned) command, format_bytes(frame, size).c_str());
   this->serial_.write_array(frame, size);
   this->serial_.flush();
 
@@ -493,7 +493,7 @@ void BL3361Component::log_missing_reply_(uint16_t command, const uint8_t *receiv
   }
   // Bytes but no frame: wrong format or speed, or a line that picks up noise.
   ESP_LOGW(TAG, "No valid reply to command 0x%03X within %u ms, %u bytes arrived on the UART: %s%s", (unsigned) command,
-           (unsigned) REPLY_TIMEOUT_MS, (unsigned) received_total, format_hex_pretty(received, received_size).c_str(),
+           (unsigned) REPLY_TIMEOUT_MS, (unsigned) received_total, format_bytes(received, received_size).c_str(),
            received_total > received_size ? " ..." : "");
 }
 

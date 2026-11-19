@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# Checks that the IR receiver fix made it into a compiled firmware:
-# the digitalRead() wrapper is linked in, and ESPHome's interrupt-safe pin
-# read (used by remote_receiver) calls the wrapper instead of LibreTiny's
-# original digitalRead().
+# Checks that the IR receiver fix made it into a compiled firmware. Before
+# ESPHome 2026.11 that is this project's digitalRead() wrapper: it is linked in,
+# and ESPHome's interrupt-safe pin read (used by remote_receiver) calls it
+# instead of LibreTiny's original digitalRead(). ESPHome 2026.11 reads pins with
+# an interrupt through the interrupt object itself, so there the pin read has to
+# call gpio_irq_read() and the wrapper is merely left in place.
 #
 # Usage: check_receiver_fix.sh <esphome build directory>
 set -euo pipefail
@@ -34,16 +36,28 @@ for elf in "${elf_files[@]}"; do
   echo "Wrapper linked into $elf"
 
   "$objdump_tool" -d -C "$elf" > "$work_dir/disassembly"
-  awk -v name="<$isr_read>:" 'index($0, name) {found = 1} found && /^$/ {exit} found' \
-    "$work_dir/disassembly" > "$work_dir/isr_read"
+  # The body of one function of the listing, up to the next empty line.
+  function_body() {
+    awk -v name="<$1>:" 'index($0, name) {found = 1} found && /^$/ {exit} found' "$work_dir/disassembly"
+  }
 
+  function_body "$isr_read" > "$work_dir/isr_read"
   [[ -s "$work_dir/isr_read" ]] || fail "$isr_read not found in $elf"
+
   if grep -q '__wrap_digitalRead' "$work_dir/isr_read"; then
     echo "::notice::$isr_read calls __wrap_digitalRead, the receiver fix is active"
     exit 0
   fi
-  cat "$work_dir/isr_read"
-  fail "$isr_read does not call __wrap_digitalRead"
+
+  # ESPHome 2026.11 or newer: the ISR copy hands over to the pin object, which
+  # reads through the interrupt.
+  function_body "esphome::libretiny::ArduinoInternalGPIOPin::digital_read()" > "$work_dir/pin_read"
+  if grep -q 'gpio_irq_read' "$work_dir/isr_read" "$work_dir/pin_read"; then
+    echo "::notice::ESPHome reads interrupt pins with gpio_irq_read itself, the receiver fix is active"
+    exit 0
+  fi
+  cat "$work_dir/isr_read" "$work_dir/pin_read"
+  fail "$isr_read neither calls __wrap_digitalRead nor gpio_irq_read"
 done
 
 fail "__wrap_digitalRead is not linked into any of: ${elf_files[*]}"
