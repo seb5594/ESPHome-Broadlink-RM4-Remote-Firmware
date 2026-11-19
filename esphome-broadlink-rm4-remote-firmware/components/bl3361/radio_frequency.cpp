@@ -23,8 +23,8 @@ static constexpr uint32_t DEFAULT_REPEAT_GAP_US = 10000;
 
 void RadioFrequencyEntity::setup() {
   radio_frequency::RadioFrequency::setup();
-  this->set_supports_transmitter(true);
-  this->set_supports_receiver(true);
+  this->set_supports_transmitter(!this->receiver_);
+  this->set_supports_receiver(this->receiver_);
   if (this->fixed_frequency_hz_ != 0) {
     this->traits_.set_fixed_frequency_hz(this->fixed_frequency_hz_);
   } else {
@@ -34,6 +34,9 @@ void RadioFrequencyEntity::setup() {
     this->traits_.set_frequency_max_hz((BAND_HIGH_LAST_KHZ + 1) * 1000u);
   }
   this->traits_.add_supported_modulation(radio_frequency::RadioFrequencyModulation::RADIO_FREQUENCY_MODULATION_OOK);
+
+  if (!this->receiver_)
+    return;
 
   // What the module receives goes to the API as a receive event. The timings are
   // already cleaned up by the receive filter, so the tolerance only matters to a
@@ -46,11 +49,18 @@ void RadioFrequencyEntity::setup() {
 
 void RadioFrequencyEntity::dump_config() {
   radio_frequency::RadioFrequency::dump_config();
-  ESP_LOGCONFIG(TAG, "  Sends through the BL3361 module, on its own frequency unless the request names one");
-  ESP_LOGCONFIG(TAG, "  Reports what the module receives, on the frequency selected for it");
+  if (this->receiver_) {
+    ESP_LOGCONFIG(TAG, "  Reports what the BL3361 module receives, on the frequency selected for it");
+  } else {
+    ESP_LOGCONFIG(TAG, "  Sends through the BL3361 module, on its own frequency unless the request names one");
+  }
 }
 
 bool RadioFrequencyEntity::control(const radio_frequency::RadioFrequencyCall &call) {
+  if (this->receiver_) {
+    ESP_LOGW(TAG, "This is the receiving side, it does not send");
+    return false;
+  }
   // Decode in whichever of the three forms the caller used.
   remote_base::RemoteTransmitData data;
   if (call.is_packed()) {

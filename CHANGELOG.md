@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.5.0 - 2026-11-19
+
+### Changed
+
+- **The radio is two entities of Home Assistant's radio frequency platform now:**
+  `RF Transmitter` (sends) and `RF Receiver` (reports what the radio hears).
+  Release 1.4.0 had one entity that announced both capabilities. Home Assistant
+  and the ESPHome documentation of `ir_rf_proxy` know an entity as a transmitter
+  or a receiver, and in the code of Home Assistant 2026.12 an entity with both
+  becomes a receiver only, so the transmitter would have gone. The platform takes
+  `receiver: true` for the receiving one. If you extended the entity to name its
+  frequency, extend `rf_receiver_entity` now (`rf_entity` is the transmitter).
+  The ESPHome integration of Home Assistant 2026.11 creates the transmitter only,
+  the receiver follows in 2026.12 according to the HAIR 1.2.0 release notes; this
+  side has not been tried against that release yet.
+
+### Fixed
+
+- **The build works with ESPHome 2026.11.** `format_hex_pretty` was renamed there,
+  the component has its own formatter for the log output now and does not depend
+  on the name any more.
+- The CI check for the receiver fix knows that ESPHome 2026.11 reads the interrupt
+  pins of the RTL8720C natively. The wrapper of this repository stays for 2026.9
+  and 2026.10, where it is still needed.
+
+### Tested
+
+- ESPHome 2026.9.0, 2026.10.0 and 2026.11.0 compile all devices.
+- Home Assistant 2026.11.2 is the current release; its ESPHome integration sends
+  through `RF Transmitter`.
+
 ## 1.4.0 - 2026-11-14
 
 ### Added

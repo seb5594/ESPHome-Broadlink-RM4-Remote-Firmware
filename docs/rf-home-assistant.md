@@ -298,11 +298,16 @@ pick this one.
 
 ### Receiving through the platform
 
-From release 1.4.0 the entity also announces itself as a **receiver** and passes
-every transmission the module receives on to Home Assistant, the same ones that
-arrive as the event `esphome.<name>_rf_received` (one per transmission, repeats
-swallowed, see [Receiving](#receiving)). Home Assistant calls a device that
-sends and receives a transmitter and a receiver entity.
+Since release 1.4.0 the device passes every transmission the module receives on
+to Home Assistant, the same ones that arrive as the event
+`esphome.<name>_rf_received` (one per transmission, repeats swallowed, see
+[Receiving](#receiving)). Since 1.5.0 it does so through its own entity,
+**RF Receiver**: Home Assistant (and the ESPHome documentation of the
+`ir_rf_proxy` component) knows a radio entity as a transmitter or as a
+receiver, never as both, and an entity that claims both is treated as a
+receiver only. Release 1.4.0 had one entity for both, which would have lost the
+transmitter once Home Assistant supports receivers. Now the module shows up as
+`RF Transmitter` and `RF Receiver`.
 
 What is missing is on the Home Assistant side: the ESPHome integration of
 **2026.11.1** creates only the transmitter, it filters for devices that announce a
@@ -319,7 +324,7 @@ in your own config:
 
 ```yaml
 radio_frequency:
-  - id: !extend rf_entity
+  - id: !extend rf_receiver_entity
     frequency: 434.3MHz
 ```
 
@@ -327,7 +332,7 @@ Without it the entity declares the tuning range of the module (305-340 MHz and
 430-440 MHz). With it, it declares that one frequency; the radio is still tuned by
 `RF Frequency`, and a request to send on another frequency is refused by Home
 Assistant. Put the block into your device config, below `packages:`, it extends
-the entity `rf_entity` of the package.
+the entity `rf_receiver_entity` of the package (the transmitter is `rf_entity`).
 
 ## Receiving
 
@@ -410,7 +415,8 @@ tap on **Learn a remote** guides through both steps with notifications.
 - **HAIR** knows radio since its release 1.2.0 (beta). Per its release notes it
   sends RF through an ESPHome radio transmitter on Home Assistant 2026.11 or
   newer, which is what the `RF Transmitter` of this device is, and it hears RF
-  through ESPHome radio receivers on Home Assistant 2026.12 (see
+  through ESPHome radio receivers on Home Assistant 2026.12, which is what the
+  `RF Receiver` of this device is (see
   [above](#receiving-through-the-platform)). Rolling-code remotes such as car
   keys are not recognized by it. Until the receiver is available, use `rf_learn`
   and your own switches and buttons for RF.
@@ -426,7 +432,7 @@ tap on **Learn a remote** guides through both steps with notifications.
 | Press the key briefly | phase `capture`, then `learned` |
 | The code is stored in `.storage` under the device and the command | You paste it into a switch, button or script |
 | `remote.send_command` | `rf_send_raw_at` |
-| Radio frequency platform (transmitter, receiver from 1.4.0) | `RF Transmitter` entity |
+| Radio frequency platform (transmitter; receiver from 1.5.0) | `RF Transmitter` and `RF Receiver` entities |
 
 Codes learned with the Broadlink app or integration are a compressed binary
 packet and cannot be imported; learn them again.

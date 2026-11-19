@@ -3,13 +3,20 @@
     radio_frequency:
       - platform: bl3361
         name: RF Transmitter
+      - platform: bl3361
+        name: RF Receiver
+        receiver: true
         frequency: 434.3MHz   # optional, see below
 
-The entity sends, and it reports what the module receives (the same
-transmissions as `on_receive`). Without `frequency` it declares the tuning range
-of the module, 305-340 MHz and 430-440 MHz. A receiver that declares one
-frequency tells Home Assistant (and tools like HAIR) which carrier the codes it
-hears are on, so name the frequency of your remotes there.
+Home Assistant knows a radio_frequency entity as a transmitter or as a receiver,
+not as both (an entity that claims both is treated as a receiver only), so the
+one module gets two entities. The transmitter sends. The receiver reports what
+the module receives (the same transmissions as `on_receive`).
+
+Without `frequency` an entity declares the tuning range of the module, 305-340
+MHz and 430-440 MHz. A receiver that declares one frequency tells Home Assistant
+(and tools like HAIR) which carrier the codes it hears are on, so name the
+frequency of your remotes there.
 
 Needs ESPHome 2026.10 or newer: the radio_frequency component is experimental
 and its interface changed in that release.
@@ -30,6 +37,8 @@ RadioFrequencyEntity = bl3361_ns.class_(
     radio_frequency.RadioFrequency,
     cg.Parented.template(BL3361Component),
 )
+
+CONF_RECEIVER = "receiver"
 
 MINIMUM_ESPHOME = (2026, 10)
 
@@ -54,6 +63,7 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(CONF_BL3361_ID): cv.use_id(BL3361Component),
             cv.Optional(CONF_FREQUENCY): validate_frequency,
+            cv.Optional(CONF_RECEIVER, default=False): cv.boolean,
         }
     ),
     validate_esphome_version,
@@ -63,5 +73,6 @@ CONFIG_SCHEMA = cv.All(
 async def to_code(config):
     var = await radio_frequency.new_radio_frequency(config)
     await cg.register_parented(var, config[CONF_BL3361_ID])
+    cg.add(var.set_receiver(config[CONF_RECEIVER]))
     if CONF_FREQUENCY in config:
         cg.add(var.set_fixed_frequency_hz(round(config[CONF_FREQUENCY])))

@@ -248,9 +248,10 @@ Assistant you get:
 - **Learning like the Broadlink app**: the action `rf_learn` finds the frequency
   while you hold a key and captures the code when you press it briefly.
 - **Sending**: `rf_send_raw` and `rf_send_raw_at` send a code, the native
-  **RF Transmitter** entity lets other integrations send through the radio and
-  reports what it receives, as far as Home Assistant supports receivers (the
-  ESPHome integration of 2026.11.1 does not yet).
+  **RF Transmitter** entity lets other integrations send through the radio; the
+  **RF Receiver** entity reports what it hears, as far as Home Assistant supports
+  receivers (the ESPHome integration of 2026.11 does not yet, 2026.12 is
+  expected to).
 - **Receiving**: every code that arrives is fired as the event
   `esphome.<name>_rf_received` with the pulse timings in `code`.
 - `rf_scan` shows the signal strength of 20 channels around the frequency.
