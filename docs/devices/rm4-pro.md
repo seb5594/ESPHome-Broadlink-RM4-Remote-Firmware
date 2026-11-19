@@ -82,14 +82,19 @@ dump made with `ltchiptool flash read`.
 
 ## Opening and flashing
 
-The RM4 Pro is opened and flashed like the [RM4 Mini](rm4-mini.md#flashing),
-with a different serial header. The [README](../../README.md#opening-your-device)
-has the step-by-step guide for every device. What is known for the Pro:
+The RM4 Pro is flashed like the [RM4 Mini](rm4-mini.md#flashing), with a
+different serial header. The [README](../../README.md#opening-your-device) has
+the step-by-step guide with photos. In short:
 
-- The serial port is the `WIFI DEBUG` header: adapter TX to pin 16 (RX2),
-  adapter RX to pin 17 (TX2), plus GND.
-- Download mode: bridge `PA0` (pin 21 of that header) to `3.3V`, then
-  power-cycle the device.
+- Opening: peel off the ring-shaped pad on the bottom, remove the two screws
+  under it, lift off the base, then remove the one screw that holds the board
+  in the white IR LED carrier.
+- The serial port is the `WIFI DEBUG` group of test pads on the back of the
+  board: adapter TX to T6 (`pin16:RX2`), adapter RX to T5 (`pin17:TX2`), GND
+  to T11 or T7.
+- Download mode: bridge T2 (`pin21:IOA0`) to T1 (`3.3V`), then power-cycle the
+  device. Leave T8 (`+5V`), next to T1, alone.
+- The pads are flat, not through-holes: solder the wires on.
 - Name the backup `rm4pro-stock.bin`.
 
 ## 433 MHz radio
@@ -113,7 +118,6 @@ device can confirm it. The most useful reports:
 1. Does the log show `Listening on 433.920 MHz`? If not, what does the line before it say?
 2. Does a key fob or socket remote produce events?
 3. Does `rf_send_raw` switch a 433 MHz socket?
-4. The photos and screw positions of the RM4 Pro for the opening guide.
 
 Please open an [issue](https://github.com/seb5594/ESPHome-Broadlink-RM4-Remote-Firmware/issues)
 with the log.
